@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "react_native_task_manager",
+    "slug": "react_native_task_manager",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "reactnativetaskmanager",
+    "userInterfaceStyle": "automatic",
+    "web": {
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
