@@ -104,5 +104,22 @@ export function createTaskRepository(db: SQLiteDatabase) {
 
       return updatedTask;
     },
+
+    async deleteTask(id: string): Promise<string> {
+      const now = new Date().toISOString();
+
+      const result = await db.runAsync(
+        `UPDATE tasks
+         SET deleted_at = ?, updated_at = ?
+         WHERE id = ? AND deleted_at IS NULL`,
+        [now, now, id],
+      );
+
+      if (result.changes === 0) {
+        throw new Error(`Task ${id} was not found`);
+      }
+
+      return id;
+    },
   };
 }

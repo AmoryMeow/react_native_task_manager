@@ -113,6 +113,29 @@ export default function HomeScreen() {
     }
   };
 
+  const deleteTask = async (id: string) => {
+    if (updatingTaskIds.has(id)) return;
+
+    setUpdatingTaskIds((prev) => new Set(prev).add(id));
+
+    try {
+      const deletedTaskId = await createTaskRepository(db).deleteTask(id);
+
+      setTasks((currentTasks) =>
+        currentTasks.filter((task) => task.id !== deletedTaskId),
+      );
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+      setError("Could not delete task");
+    } finally {
+      setUpdatingTaskIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-zinc-100">
       <View className="flex-1 px-5 pt-6">
@@ -178,39 +201,57 @@ export default function HomeScreen() {
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
               const isDone = item.status === "done";
+              const isUpdating = updatingTaskIds.has(item.id);
 
               return (
-                <Pressable
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: isDone }}
-                  className={`mb-2 min-h-14 flex-row items-center rounded-2xl border border-zinc-200 bg-white px-4 py-3 active:bg-zinc-50 ${
-                    updatingTaskIds.has(item.id) ? "opacity-50" : ""
+                <View
+                  className={`mb-2 min-h-14 flex-row items-center rounded-2xl border border-zinc-200 bg-white ${
+                    isUpdating ? "opacity-50" : ""
                   }`}
-                  onPress={() => void toggleTask(item)}
-                  disabled={updatingTaskIds.has(item.id)}
                 >
-                  <View
-                    className={
-                      isDone
-                        ? "mr-3 h-5 w-5 items-center justify-center rounded-md bg-zinc-950"
-                        : "mr-3 h-5 w-5 rounded-md border-2 border-zinc-400"
-                    }
+                  <Pressable
+                    accessibilityRole="checkbox"
+                    accessibilityState={{
+                      checked: isDone,
+                      disabled: isUpdating,
+                    }}
+                    disabled={isUpdating}
+                    className="min-h-14 flex-1 flex-row items-center px-4 py-3 active:bg-zinc-50"
+                    onPress={() => void toggleTask(item)}
                   >
-                    {isDone && (
-                      <Text className="text-xs font-bold text-white">✓</Text>
-                    )}
-                  </View>
+                    <View
+                      className={
+                        isDone
+                          ? "mr-3 h-5 w-5 items-center justify-center rounded-md bg-zinc-950"
+                          : "mr-3 h-5 w-5 rounded-md border-2 border-zinc-400"
+                      }
+                    >
+                      {isDone && (
+                        <Text className="text-xs font-bold text-white">✓</Text>
+                      )}
+                    </View>
 
-                  <Text
-                    className={
-                      isDone
-                        ? "flex-1 text-base text-zinc-400 line-through"
-                        : "flex-1 text-base text-zinc-900"
-                    }
+                    <Text
+                      className={
+                        isDone
+                          ? "flex-1 text-base text-zinc-400 line-through"
+                          : "flex-1 text-base text-zinc-900"
+                      }
+                    >
+                      {item.title}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Delete ${item.title}`}
+                    disabled={isUpdating}
+                    onPress={() => void deleteTask(item.id)}
+                    className="min-h-14 w-14 items-center justify-center active:bg-zinc-100"
                   >
-                    {item.title}
-                  </Text>
-                </Pressable>
+                    <Text className="text-xl text-zinc-400">×</Text>
+                  </Pressable>
+                </View>
               );
             }}
             ListEmptyComponent={
