@@ -11,10 +11,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useSQLiteContext } from "expo-sqlite";
 
-import { formatTaskSchedule } from "@/entities/task/lib/format-task-schedule";
 import { groupTasks, type TaskGroupId } from "@/entities/task/lib/group-tasks";
 import type { Task, TaskSchedule } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
+import { TaskCard } from "@/entities/task/ui/task-card";
 import { ChevronIcon } from "@/shared/ui/icons/chevron-icon";
 
 type ScheduleOption = "inbox" | "today" | "tomorrow" | "soon" | "someday";
@@ -390,68 +390,16 @@ export default function HomeScreen() {
               );
             }}
             renderItem={({ item, section }) => {
-              const isDone = item.status === "done";
-              const isUpdating = updatingTaskIds.has(item.id);
-              const shouldShowSchedule =
-                section.id === "earlier" || section.id === "upcoming";
-
               return (
-                <View
-                  className={`mb-2 min-h-12 flex-row items-center overflow-hidden rounded-xl border border-zinc-200 bg-white ${
-                    isUpdating ? "opacity-50" : ""
-                  }`}
-                >
-                  <Pressable
-                    accessibilityRole="checkbox"
-                    accessibilityState={{
-                      checked: isDone,
-                      disabled: isUpdating,
-                    }}
-                    disabled={isUpdating}
-                    className="min-h-12 flex-1 flex-row items-center px-3 py-2.5 active:bg-zinc-50"
-                    onPress={() => void toggleTask(item)}
-                  >
-                    <View
-                      className={
-                        isDone
-                          ? "mr-3 h-5 w-5 items-center justify-center rounded-md bg-zinc-950"
-                          : "mr-3 h-5 w-5 rounded-md border-2 border-zinc-400"
-                      }
-                    >
-                      {isDone && (
-                        <Text className="text-xs font-bold text-white">✓</Text>
-                      )}
-                    </View>
-
-                    <View className="flex-1">
-                      <Text
-                        className={
-                          isDone
-                            ? "text-sm text-zinc-400 line-through"
-                            : "text-sm font-medium text-zinc-900"
-                        }
-                      >
-                        {item.title}
-                      </Text>
-
-                      {shouldShowSchedule && (
-                        <Text className="mt-0.5 text-xs text-zinc-500">
-                          {formatTaskSchedule(item.schedule)}
-                        </Text>
-                      )}
-                    </View>
-                  </Pressable>
-
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Delete ${item.title}`}
-                    disabled={isUpdating}
-                    onPress={() => void deleteTask(item)}
-                    className="min-h-12 w-11 items-center justify-center border-l border-zinc-100 active:bg-zinc-100"
-                  >
-                    <Text className="text-xl text-zinc-400">×</Text>
-                  </Pressable>
-                </View>
+                <TaskCard
+                  task={item}
+                  isUpdating={updatingTaskIds.has(item.id)}
+                  showSchedule={
+                    section.id === "earlier" || section.id === "upcoming"
+                  }
+                  onToggle={(task) => void toggleTask(task)}
+                  onDelete={(task) => void deleteTask(task)}
+                />
               );
             }}
             ListEmptyComponent={
