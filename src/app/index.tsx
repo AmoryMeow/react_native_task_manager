@@ -19,6 +19,7 @@ export default function HomeScreen() {
   const [updatingTaskIds, setUpdatingTaskIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [lastDeletedTask, setLastDeletedTask] = useState<Task | null>(null);
 
   const remainingTasks = tasks.filter((task) => task.status !== "done").length;
 
@@ -113,26 +114,49 @@ export default function HomeScreen() {
     }
   };
 
-  const deleteTask = async (id: string) => {
-    if (updatingTaskIds.has(id)) return;
+  const deleteTask = async (task: Task) => {
+    if (updatingTaskIds.has(task.id)) return;
 
-    setUpdatingTaskIds((prev) => new Set(prev).add(id));
+    setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
 
     try {
-      const deletedTaskId = await createTaskRepository(db).deleteTask(id);
+      const deletedTaskId = await createTaskRepository(db).deleteTask(task.id);
 
       setTasks((currentTasks) =>
-        currentTasks.filter((task) => task.id !== deletedTaskId),
+        currentTasks.filter((currentTask) => currentTask.id !== deletedTaskId),
       );
+      setLastDeletedTask(task);
     } catch (error) {
       console.error("Failed to delete task:", error);
       setError("Could not delete task");
     } finally {
       setUpdatingTaskIds((prev) => {
         const next = new Set(prev);
-        next.delete(id);
+        next.delete(task.id);
         return next;
       });
+    }
+  };
+
+  const undoDelete = async () => {
+    if (!lastDeletedTask) return;
+
+    const task = lastDeletedTask;
+    setLastDeletedTask(null);
+    setError(null);
+
+    try {
+      const restoredTask = await createTaskRepository(db).restoreTask(task);
+
+      setTasks((currentTasks) =>
+        [...currentTasks, restoredTask].sort((left, right) =>
+          right.createdAt.localeCompare(left.createdAt),
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to restore task:", error);
+      setLastDeletedTask(task);
+      setError("Could not restore task");
     }
   };
 
@@ -246,7 +270,7 @@ export default function HomeScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`Delete ${item.title}`}
                     disabled={isUpdating}
-                    onPress={() => void deleteTask(item.id)}
+                    onPress={() => void deleteTask(item)}
                     className="min-h-14 w-14 items-center justify-center active:bg-zinc-100"
                   >
                     <Text className="text-xl text-zinc-400">×</Text>
@@ -268,6 +292,20 @@ export default function HomeScreen() {
               </View>
             }
           />
+        )}
+        {lastDeletedTask && (
+          <View className="mb-3 flex-row items-center justify-between rounded-2xl bg-zinc-900 px-4 py-3">
+            <Text className="text-sm font-medium text-white">Task deleted</Text>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Undo delete"
+              onPress={() => void undoDelete()}
+              className="rounded-lg px-3 py-2 active:bg-zinc-700"
+            >
+              <Text className="font-semibold text-white">Undo</Text>
+            </Pressable>
+          </View>
         )}
       </View>
     </SafeAreaView>
