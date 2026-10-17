@@ -16,6 +16,9 @@ export default function HomeScreen() {
 
   const [title, setTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [updatingTaskIds, setUpdatingTaskIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const remainingTasks = tasks.filter((task) => task.status !== "done").length;
 
@@ -61,6 +64,7 @@ export default function HomeScreen() {
   };
 
   const isInputDisabled = isLoading || error !== null || isSaving;
+  const isAddDisabled = isInputDisabled || !title.trim();
 
   const addTask = async () => {
     const trimmedTitle = title.trim();
@@ -84,22 +88,29 @@ export default function HomeScreen() {
     }
   };
 
-  const toggleTask = (id: string) => {
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id !== id) return task;
+  const toggleTask = async (task: Task) => {
+    if (updatingTaskIds.has(task.id)) return;
 
-        const isDone = task.status === "done";
-        const now = new Date().toISOString();
+    setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
 
-        return {
-          ...task,
-          status: isDone ? "todo" : "done",
-          completedAt: isDone ? undefined : now,
-          updatedAt: now,
-        };
-      }),
-    );
+    try {
+      const updatedTask = await createTaskRepository(db).toggleTask(task);
+
+      setTasks((currentTasks) =>
+        currentTasks.map((currentTask) =>
+          currentTask.id === updatedTask.id ? updatedTask : currentTask,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to toggle task:", error);
+      setError("Could not update task");
+    } finally {
+      setUpdatingTaskIds((prev) => {
+        const next = new Set(prev);
+        next.delete(task.id);
+        return next;
+      });
+    }
   };
 
   return (
@@ -138,9 +149,9 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Add task"
-            className={`h-12 w-12 items-center justify-center rounded-2xl bg-zinc-950 ${isInputDisabled ? "opacity-40" : "active:bg-zinc-700"}`}
+            className={`h-12 w-12 items-center justify-center rounded-2xl bg-zinc-950 ${isAddDisabled ? "opacity-40" : "active:bg-zinc-700"}`}
             onPress={() => void addTask()}
-            disabled={isInputDisabled || !title.trim()}
+            disabled={isAddDisabled}
           >
             <Text className="text-2xl font-light leading-7 text-white">+</Text>
           </Pressable>
@@ -172,8 +183,11 @@ export default function HomeScreen() {
                 <Pressable
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: isDone }}
-                  className="mb-2 min-h-14 flex-row items-center rounded-2xl border border-zinc-200 bg-white px-4 py-3 active:bg-zinc-50"
-                  onPress={() => toggleTask(item.id)}
+                  className={`mb-2 min-h-14 flex-row items-center rounded-2xl border border-zinc-200 bg-white px-4 py-3 active:bg-zinc-50 ${
+                    updatingTaskIds.has(item.id) ? "opacity-50" : ""
+                  }`}
+                  onPress={() => void toggleTask(item)}
+                  disabled={updatingTaskIds.has(item.id)}
                 >
                   <View
                     className={

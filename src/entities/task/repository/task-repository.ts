@@ -76,16 +76,33 @@ export function createTaskRepository(db: SQLiteDatabase) {
       return task;
     },
 
-    async toggleTask(task: Task): Promise<void> {
+    async toggleTask(task: Task): Promise<Task> {
       const isDone = task.status === "done";
       const now = new Date().toISOString();
+      const updatedTask: Task = {
+        ...task,
+        status: isDone ? "todo" : "done",
+        completedAt: isDone ? undefined : now,
+        updatedAt: now,
+      };
 
-      await db.runAsync(
+      const result = await db.runAsync(
         `UPDATE tasks
          SET status = ?, completed_at = ?, updated_at = ?
          WHERE id = ? AND deleted_at IS NULL`,
-        [isDone ? "todo" : "done", isDone ? null : now, now, task.id],
+        [
+          updatedTask.status,
+          updatedTask.completedAt ?? null,
+          updatedTask.updatedAt,
+          updatedTask.id,
+        ],
       );
+
+      if (result.changes === 0) {
+        throw new Error(`Task ${task.id} was not found`);
+      }
+
+      return updatedTask;
     },
   };
 }
