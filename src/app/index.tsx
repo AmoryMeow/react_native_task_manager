@@ -12,7 +12,8 @@ export default function HomeScreen() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -37,7 +38,7 @@ export default function HomeScreen() {
         if (isCancelled) return;
 
         console.error("Failed to load tasks:", error);
-        setError("Could not load tasks");
+        setLoadError("Could not load tasks");
       } finally {
         if (!isCancelled) setIsLoading(false);
       }
@@ -52,19 +53,19 @@ export default function HomeScreen() {
 
   const retryLoadingTasks = async () => {
     setIsLoading(true);
-    setError(null);
+    setLoadError(null);
 
     try {
       setTasks(await getTasks());
     } catch (error) {
       console.error("Failed to load tasks:", error);
-      setError("Could not load tasks");
+      setLoadError("Could not load tasks");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const isInputDisabled = isLoading || error !== null || isSaving;
+  const isInputDisabled = isLoading || loadError !== null || isSaving;
   const isAddDisabled = isInputDisabled || !title.trim();
 
   const addTask = async () => {
@@ -72,6 +73,7 @@ export default function HomeScreen() {
 
     if (!trimmedTitle || isInputDisabled || isSaving) return;
 
+    setActionError(null);
     setIsSaving(true);
 
     try {
@@ -83,7 +85,7 @@ export default function HomeScreen() {
       setTitle("");
     } catch (error) {
       console.error("Failed to save task:", error);
-      setError("Could not save task");
+      setActionError("Could not save task");
     } finally {
       setIsSaving(false);
     }
@@ -92,6 +94,7 @@ export default function HomeScreen() {
   const toggleTask = async (task: Task) => {
     if (updatingTaskIds.has(task.id)) return;
 
+    setActionError(null);
     setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
 
     try {
@@ -104,7 +107,7 @@ export default function HomeScreen() {
       );
     } catch (error) {
       console.error("Failed to toggle task:", error);
-      setError("Could not update task");
+      setActionError("Could not update task");
     } finally {
       setUpdatingTaskIds((prev) => {
         const next = new Set(prev);
@@ -117,6 +120,7 @@ export default function HomeScreen() {
   const deleteTask = async (task: Task) => {
     if (updatingTaskIds.has(task.id)) return;
 
+    setActionError(null);
     setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
 
     try {
@@ -128,7 +132,7 @@ export default function HomeScreen() {
       setLastDeletedTask(task);
     } catch (error) {
       console.error("Failed to delete task:", error);
-      setError("Could not delete task");
+      setActionError("Could not delete task");
     } finally {
       setUpdatingTaskIds((prev) => {
         const next = new Set(prev);
@@ -143,7 +147,7 @@ export default function HomeScreen() {
 
     const task = lastDeletedTask;
     setLastDeletedTask(null);
-    setError(null);
+    setActionError(null);
 
     try {
       const restoredTask = await createTaskRepository(db).restoreTask(task);
@@ -156,7 +160,7 @@ export default function HomeScreen() {
     } catch (error) {
       console.error("Failed to restore task:", error);
       setLastDeletedTask(task);
-      setError("Could not restore task");
+      setActionError("Could not restore task");
     }
   };
 
@@ -206,9 +210,9 @@ export default function HomeScreen() {
 
         {isLoading && <Text>Loading tasks...</Text>}
 
-        {error && (
+        {loadError && (
           <View>
-            <Text>{error}</Text>
+            <Text>{loadError}</Text>
 
             <Pressable onPress={() => void retryLoadingTasks()}>
               <Text>Try again</Text>
@@ -216,7 +220,24 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {!isLoading && !error && (
+        {actionError && (
+          <View
+            accessibilityRole="alert"
+            className="mb-4 flex-row items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-4 py-3"
+          >
+            <Text className="flex-1 text-sm text-red-800">{actionError}</Text>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss error"
+              onPress={() => setActionError(null)}
+              className="ml-3 p-2"
+            >
+              <Text className="font-semibold text-red-800">×</Text>
+            </Pressable>
+          </View>
+        )}
+        {!isLoading && !loadError && (
           <FlatList
             className="flex-1"
             contentContainerClassName="grow pb-6"
