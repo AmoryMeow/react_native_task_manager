@@ -15,7 +15,7 @@ import { groupTasks, type TaskGroupId } from "@/entities/task/lib/group-tasks";
 import type { Task, TaskSchedule } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
 import { TaskCard } from "@/entities/task/ui/task-card";
-import { ChevronIcon } from "@/shared/ui/icons/chevron-icon";
+import { TaskSectionHeader } from "@/entities/task/ui/task-section-header";
 
 type ScheduleOption = "inbox" | "today" | "tomorrow" | "soon" | "someday";
 
@@ -366,27 +366,13 @@ export default function HomeScreen() {
               const isCollapsed = collapsedGroups.has(section.id);
 
               return (
-                <Pressable
-                  onPress={() => toggleGroup(section.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${isCollapsed ? "Expand" : "Collapse"} ${section.title}`}
-                  accessibilityState={{ expanded: !isCollapsed }}
-                  className="mb-2 mt-4 self-start flex-row items-center py-1"
-                >
-                  <Text className="text-base font-semibold text-zinc-900">
-                    {section.title}
-                  </Text>
-
-                  <View className="ml-2 flex-row items-center gap-1">
-                    <Text className="h-5 text-xs leading-5 text-zinc-500">
-                      {section.count}
-                    </Text>
-
-                    <View className="h-5 w-5 items-center justify-center rounded-full bg-zinc-200">
-                      <ChevronIcon direction={isCollapsed ? "down" : "up"} />
-                    </View>
-                  </View>
-                </Pressable>
+                <TaskSectionHeader
+                  groupId={section.id}
+                  title={section.title}
+                  count={section.count}
+                  isCollapsed={isCollapsed}
+                  onToggle={toggleGroup}
+                />
               );
             }}
             renderItem={({ item, section }) => {
