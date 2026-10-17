@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  FlatList,
   Pressable,
   ScrollView,
+  SectionList,
   Text,
   TextInput,
   View,
@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useSQLiteContext } from "expo-sqlite";
 
 import { formatTaskSchedule } from "@/entities/task/lib/format-task-schedule";
+import { groupTasks } from "@/entities/task/lib/group-tasks";
 import type { Task, TaskSchedule } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
 
@@ -42,7 +43,15 @@ export default function HomeScreen() {
 
   const [scheduleOption, setScheduleOption] = useState<ScheduleOption>("inbox");
 
+  const [showCompleted, setShowCompleted] = useState(false);
+
   const remainingTasks = tasks.filter((task) => task.status !== "done").length;
+
+  const sections = groupTasks(tasks).map((group) => ({
+    ...group,
+    count: group.data.length,
+    data: group.id === "completed" && !showCompleted ? [] : group.data,
+  }));
 
   const getTasks = useCallback(() => createTaskRepository(db).getTasks(), [db]);
 
@@ -303,7 +312,9 @@ export default function HomeScreen() {
               onPress={() => void retryLoadingTasks()}
               className="rounded-lg bg-zinc-900 px-3 py-2 active:bg-zinc-700"
             >
-              <Text className="text-xs font-semibold text-white">Try again</Text>
+              <Text className="text-xs font-semibold text-white">
+                Try again
+              </Text>
             </Pressable>
           </View>
         )}
@@ -325,16 +336,52 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         )}
+
         {!isLoading && !loadError && (
-          <FlatList
+          <SectionList
             className="flex-1"
-            contentContainerClassName="grow pb-4"
-            data={tasks}
+            contentContainerClassName="grow pb-6"
+            sections={sections}
             keyExtractor={(task) => task.id}
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => {
+            stickySectionHeadersEnabled={false}
+            extraData={showCompleted}
+            renderSectionHeader={({ section }) => {
+              const isCompleted = section.id === "completed";
+
+              return (
+                <Pressable
+                  disabled={!isCompleted}
+                  onPress={() => setShowCompleted((prev) => !prev)}
+                  accessibilityRole={isCompleted ? "button" : undefined}
+                  accessibilityState={
+                    isCompleted ? { expanded: showCompleted } : undefined
+                  }
+                  className="mb-2 mt-4 flex-row items-center justify-between"
+                >
+                  <Text className="text-base font-semibold text-zinc-900">
+                    {section.title}
+                  </Text>
+
+                  <View className="flex-row items-center gap-1.5">
+                    <Text className="text-xs text-zinc-500">
+                      {section.count}
+                    </Text>
+
+                    {isCompleted && (
+                      <Text className="text-xs text-zinc-500">
+                        {showCompleted ? "⌃" : "⌄"}
+                      </Text>
+                    )}
+                  </View>
+                </Pressable>
+              );
+            }}
+            renderItem={({ item, section }) => {
               const isDone = item.status === "done";
               const isUpdating = updatingTaskIds.has(item.id);
+              const shouldShowSchedule =
+                section.id === "earlier" || section.id === "upcoming";
 
               return (
                 <View
@@ -375,14 +422,8 @@ export default function HomeScreen() {
                         {item.title}
                       </Text>
 
-                      {item.schedule.type !== "inbox" && (
-                        <Text
-                          className={
-                            isDone
-                              ? "mt-0.5 text-xs text-zinc-300"
-                              : "mt-0.5 text-xs text-zinc-500"
-                          }
-                        >
+                      {shouldShowSchedule && (
+                        <Text className="mt-0.5 text-xs text-zinc-500">
                           {formatTaskSchedule(item.schedule)}
                         </Text>
                       )}
@@ -402,20 +443,20 @@ export default function HomeScreen() {
               );
             }}
             ListEmptyComponent={
-              <View className="flex-1 items-center justify-center px-8 pb-16">
-                <View className="mb-3 h-12 w-12 items-center justify-center rounded-xl border border-zinc-300 bg-white">
-                  <Text className="text-xl text-zinc-700">✓</Text>
+              tasks.length === 0 ? (
+                <View className="flex-1 items-center justify-center px-8 pb-24">
+                  <Text className="mb-2 text-lg font-semibold text-zinc-900">
+                    Clear space for focus
+                  </Text>
+                  <Text className="text-center text-sm text-zinc-500">
+                    Add one small task to get started.
+                  </Text>
                 </View>
-                <Text className="mb-1 text-center text-base font-semibold text-zinc-900">
-                  Clear space for focus
-                </Text>
-                <Text className="text-center text-sm leading-5 text-zinc-500">
-                  Add one small task to get started.
-                </Text>
-              </View>
+              ) : null
             }
           />
         )}
+
         {lastDeletedTask && (
           <View className="mb-2 flex-row items-center justify-between rounded-xl bg-zinc-900 px-3 py-2">
             <Text className="text-sm font-medium text-white">Task deleted</Text>
