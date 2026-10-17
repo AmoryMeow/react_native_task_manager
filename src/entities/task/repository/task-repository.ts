@@ -46,8 +46,16 @@ export function createTaskRepository(db: SQLiteDatabase) {
       return rows.map(mapTask);
     },
 
-    async addTask(title: string, schedule: TaskSchedule): Promise<void> {
+    async addTask(title: string, schedule: TaskSchedule): Promise<Task> {
       const now = new Date().toISOString();
+      const task: Task = {
+        id: Crypto.randomUUID(),
+        title: title.trim(),
+        status: "todo",
+        schedule,
+        createdAt: now,
+        updatedAt: now,
+      };
 
       await db.runAsync(
         `INSERT INTO tasks (
@@ -55,15 +63,17 @@ export function createTaskRepository(db: SQLiteDatabase) {
           scheduled_date, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
-          Crypto.randomUUID(),
-          title.trim(),
-          "todo",
-          schedule.type,
-          schedule.type === "date" ? schedule.date : null,
-          now,
-          now,
+          task.id,
+          task.title,
+          task.status,
+          task.schedule.type,
+          task.schedule.type === "date" ? task.schedule.date : null,
+          task.createdAt,
+          task.updatedAt,
         ],
       );
+
+      return task;
     },
 
     async toggleTask(task: Task): Promise<void> {

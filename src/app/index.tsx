@@ -1,4 +1,3 @@
-import * as Crypto from "expo-crypto";
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, Pressable, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,13 +15,11 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const remainingTasks = tasks.filter((task) => task.status !== "done").length;
 
-  const getTasks = useCallback(
-    () => createTaskRepository(db).getTasks(),
-    [db],
-  );
+  const getTasks = useCallback(() => createTaskRepository(db).getTasks(), [db]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -63,26 +60,28 @@ export default function HomeScreen() {
     }
   };
 
-  const isInputDisabled = isLoading || error !== null;
+  const isInputDisabled = isLoading || error !== null || isSaving;
 
-  const addTask = () => {
+  const addTask = async () => {
     const trimmedTitle = title.trim();
 
-    if (!trimmedTitle || isInputDisabled) return;
+    if (!trimmedTitle || isInputDisabled || isSaving) return;
 
-    const now = new Date().toISOString();
+    setIsSaving(true);
 
-    const task: Task = {
-      id: Crypto.randomUUID(),
-      title: trimmedTitle,
-      status: "todo",
-      schedule: { type: "inbox" },
-      createdAt: now,
-      updatedAt: now,
-    };
+    try {
+      const task = await createTaskRepository(db).addTask(trimmedTitle, {
+        type: "inbox",
+      });
 
-    setTasks((prev) => [...prev, task]);
-    setTitle("");
+      setTasks((currentTasks) => [task, ...currentTasks]);
+      setTitle("");
+    } catch (error) {
+      console.error("Failed to save task:", error);
+      setError("Could not save task");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const toggleTask = (id: string) => {
@@ -131,7 +130,7 @@ export default function HomeScreen() {
             placeholder="Add a small next step"
             placeholderTextColor="#71717a"
             selectionColor="#18181b"
-            onSubmitEditing={addTask}
+            onSubmitEditing={() => void addTask()}
             returnKeyType="done"
             editable={!isInputDisabled}
           />
@@ -140,8 +139,8 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Add task"
             className={`h-12 w-12 items-center justify-center rounded-2xl bg-zinc-950 ${isInputDisabled ? "opacity-40" : "active:bg-zinc-700"}`}
-            onPress={addTask}
-            disabled={isInputDisabled}
+            onPress={() => void addTask()}
+            disabled={isInputDisabled || !title.trim()}
           >
             <Text className="text-2xl font-light leading-7 text-white">+</Text>
           </Pressable>
