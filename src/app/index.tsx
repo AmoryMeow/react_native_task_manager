@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { FlatList, Pressable, Text, TextInput, View } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useSQLiteContext } from "expo-sqlite";
 
+import { formatTaskSchedule } from "@/entities/task/lib/format-task-schedule";
 import type { Task, TaskSchedule } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
 
@@ -205,27 +213,22 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-100">
-      <View className="flex-1 px-5 pt-6">
-        <View className="mb-6 flex-row items-end justify-between">
-          <View>
-            <Text className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-zinc-500">
-              Focus
-            </Text>
-            <Text className="text-4xl font-bold tracking-tight text-zinc-950">
-              My Tasks
-            </Text>
-          </View>
+      <View className="flex-1 px-4 pt-4">
+        <View className="mb-4 flex-row items-center justify-between">
+          <Text className="text-3xl font-bold tracking-tight text-zinc-950">
+            My Tasks
+          </Text>
 
-          <View className="rounded-full border border-zinc-300 bg-white px-3 py-1.5">
+          <View className="rounded-full bg-zinc-200 px-2.5 py-1">
             <Text className="text-xs font-semibold text-zinc-600">
               {remainingTasks} open
             </Text>
           </View>
         </View>
 
-        <View className="mb-6 flex-row gap-2">
+        <View className="mb-3 flex-row gap-2">
           <TextInput
-            className="h-12 flex-1 rounded-2xl border border-zinc-300 bg-white px-4 text-base text-zinc-950"
+            className="h-11 flex-1 rounded-xl border border-zinc-300 bg-white px-3.5 text-base text-zinc-950"
             value={title}
             onChangeText={setTitle}
             placeholder="Add a small next step"
@@ -239,7 +242,7 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Add task"
-            className={`h-12 w-12 items-center justify-center rounded-2xl bg-zinc-950 ${isAddDisabled ? "opacity-40" : "active:bg-zinc-700"}`}
+            className={`h-11 w-11 items-center justify-center rounded-xl bg-zinc-950 ${isAddDisabled ? "opacity-40" : "active:bg-zinc-700"}`}
             onPress={() => void addTask()}
             disabled={isAddDisabled}
           >
@@ -247,7 +250,13 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        <View className="mb-6 flex-row flex-wrap gap-2">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          className="mb-4 h-8 flex-none"
+          contentContainerClassName="items-center gap-1.5 pr-2"
+        >
           {scheduleOptions.map((option) => {
             const isSelected = scheduleOption === option.value;
 
@@ -263,15 +272,15 @@ export default function HomeScreen() {
                 onPress={() => setScheduleOption(option.value)}
                 className={`${
                   isSelected
-                    ? "rounded-full bg-zinc-950 px-4 py-2"
-                    : "rounded-full border border-zinc-300 bg-white px-4 py-2"
+                    ? "rounded-full bg-zinc-950 px-3 py-1.5"
+                    : "rounded-full border border-zinc-300 bg-white px-3 py-1.5 active:bg-zinc-50"
                 } ${isInputDisabled ? "opacity-40" : ""}`}
               >
                 <Text
                   className={
                     isSelected
-                      ? "text-sm font-medium text-white"
-                      : "text-sm font-medium text-zinc-600"
+                      ? "text-xs font-semibold text-white"
+                      : "text-xs font-medium text-zinc-600"
                   }
                 >
                   {option.label}
@@ -279,16 +288,22 @@ export default function HomeScreen() {
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
-        {isLoading && <Text>Loading tasks...</Text>}
+        {isLoading && (
+          <Text className="py-3 text-sm text-zinc-500">Loading tasks...</Text>
+        )}
 
         {loadError && (
-          <View>
-            <Text>{loadError}</Text>
+          <View className="items-start rounded-xl border border-zinc-300 bg-white p-3">
+            <Text className="mb-2 text-sm text-zinc-700">{loadError}</Text>
 
-            <Pressable onPress={() => void retryLoadingTasks()}>
-              <Text>Try again</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void retryLoadingTasks()}
+              className="rounded-lg bg-zinc-900 px-3 py-2 active:bg-zinc-700"
+            >
+              <Text className="text-xs font-semibold text-white">Try again</Text>
             </Pressable>
           </View>
         )}
@@ -296,7 +311,7 @@ export default function HomeScreen() {
         {actionError && (
           <View
             accessibilityRole="alert"
-            className="mb-4 flex-row items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-4 py-3"
+            className="mb-3 flex-row items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2"
           >
             <Text className="flex-1 text-sm text-red-800">{actionError}</Text>
 
@@ -304,7 +319,7 @@ export default function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel="Dismiss error"
               onPress={() => setActionError(null)}
-              className="ml-3 p-2"
+              className="ml-2 p-1.5"
             >
               <Text className="font-semibold text-red-800">×</Text>
             </Pressable>
@@ -313,7 +328,7 @@ export default function HomeScreen() {
         {!isLoading && !loadError && (
           <FlatList
             className="flex-1"
-            contentContainerClassName="grow pb-6"
+            contentContainerClassName="grow pb-4"
             data={tasks}
             keyExtractor={(task) => task.id}
             keyboardShouldPersistTaps="handled"
@@ -323,7 +338,7 @@ export default function HomeScreen() {
 
               return (
                 <View
-                  className={`mb-2 min-h-14 flex-row items-center rounded-2xl border border-zinc-200 bg-white ${
+                  className={`mb-2 min-h-12 flex-row items-center overflow-hidden rounded-xl border border-zinc-200 bg-white ${
                     isUpdating ? "opacity-50" : ""
                   }`}
                 >
@@ -334,7 +349,7 @@ export default function HomeScreen() {
                       disabled: isUpdating,
                     }}
                     disabled={isUpdating}
-                    className="min-h-14 flex-1 flex-row items-center px-4 py-3 active:bg-zinc-50"
+                    className="min-h-12 flex-1 flex-row items-center px-3 py-2.5 active:bg-zinc-50"
                     onPress={() => void toggleTask(item)}
                   >
                     <View
@@ -349,15 +364,29 @@ export default function HomeScreen() {
                       )}
                     </View>
 
-                    <Text
-                      className={
-                        isDone
-                          ? "flex-1 text-base text-zinc-400 line-through"
-                          : "flex-1 text-base text-zinc-900"
-                      }
-                    >
-                      {item.title}
-                    </Text>
+                    <View className="flex-1">
+                      <Text
+                        className={
+                          isDone
+                            ? "text-sm text-zinc-400 line-through"
+                            : "text-sm font-medium text-zinc-900"
+                        }
+                      >
+                        {item.title}
+                      </Text>
+
+                      {item.schedule.type !== "inbox" && (
+                        <Text
+                          className={
+                            isDone
+                              ? "mt-0.5 text-xs text-zinc-300"
+                              : "mt-0.5 text-xs text-zinc-500"
+                          }
+                        >
+                          {formatTaskSchedule(item.schedule)}
+                        </Text>
+                      )}
+                    </View>
                   </Pressable>
 
                   <Pressable
@@ -365,7 +394,7 @@ export default function HomeScreen() {
                     accessibilityLabel={`Delete ${item.title}`}
                     disabled={isUpdating}
                     onPress={() => void deleteTask(item)}
-                    className="min-h-14 w-14 items-center justify-center active:bg-zinc-100"
+                    className="min-h-12 w-11 items-center justify-center border-l border-zinc-100 active:bg-zinc-100"
                   >
                     <Text className="text-xl text-zinc-400">×</Text>
                   </Pressable>
@@ -373,11 +402,11 @@ export default function HomeScreen() {
               );
             }}
             ListEmptyComponent={
-              <View className="flex-1 items-center justify-center px-8 pb-24">
-                <View className="mb-5 h-14 w-14 items-center justify-center rounded-2xl border border-zinc-300 bg-white">
-                  <Text className="text-2xl text-zinc-700">✓</Text>
+              <View className="flex-1 items-center justify-center px-8 pb-16">
+                <View className="mb-3 h-12 w-12 items-center justify-center rounded-xl border border-zinc-300 bg-white">
+                  <Text className="text-xl text-zinc-700">✓</Text>
                 </View>
-                <Text className="mb-2 text-center text-lg font-semibold text-zinc-900">
+                <Text className="mb-1 text-center text-base font-semibold text-zinc-900">
                   Clear space for focus
                 </Text>
                 <Text className="text-center text-sm leading-5 text-zinc-500">
@@ -388,14 +417,14 @@ export default function HomeScreen() {
           />
         )}
         {lastDeletedTask && (
-          <View className="mb-3 flex-row items-center justify-between rounded-2xl bg-zinc-900 px-4 py-3">
+          <View className="mb-2 flex-row items-center justify-between rounded-xl bg-zinc-900 px-3 py-2">
             <Text className="text-sm font-medium text-white">Task deleted</Text>
 
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Undo delete"
               onPress={() => void undoDelete()}
-              className="rounded-lg px-3 py-2 active:bg-zinc-700"
+              className="rounded-lg px-2.5 py-1.5 active:bg-zinc-700"
             >
               <Text className="font-semibold text-white">Undo</Text>
             </Pressable>
