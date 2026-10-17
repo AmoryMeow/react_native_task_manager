@@ -1,0 +1,80 @@
+import type { SQLiteDatabase } from "expo-sqlite";
+import type { Task, TaskSchedule } from "../model/types";
+
+interface TaskRow {
+  id: string;
+  title: string;
+  description: string | null;
+  status: Task["status"];
+  schedule_type: TaskSchedule["type"];
+  scheduled_date: string | null;
+  due_at: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+}
+
+function mapTask(row: TaskRow): Task {
+  const schedule: TaskSchedule =
+    row.schedule_type === "date"
+      ? { type: "date", date: row.scheduled_date! }
+      : { type: row.schedule_type };
+
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? undefined,
+    status: row.status,
+    schedule,
+    dueAt: row.due_at ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    completedAt: row.completed_at ?? undefined,
+  };
+}
+
+export function createTaskRepository(db: SQLiteDatabase) {
+  return {
+    async getTasks(): Promise<Task[]> {
+      const rows = await db.getAllAsync<TaskRow>(
+        `SELECT * FROM tasks
+         WHERE deleted_at IS NULL
+         ORDER BY created_at DESC`,
+      );
+
+      return rows.map(mapTask);
+    },
+
+    async addTask(title: string, schedule: TaskSchedule): Promise<void> {
+      const now = new Date().toISOString();
+
+      await db.runAsync(
+        `INSERT INTO tasks (
+          id, title, status, schedule_type,
+          scheduled_date, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          crypto.randomUUID(),
+          title.trim(),
+          "todo",
+          schedule.type,
+          schedule.type === "date" ? schedule.date : null,
+          now,
+          now,
+        ],
+      );
+    },
+
+    async toggleTask(task: Task): Promise<void> {
+      const isDone = task.status === "done";
+      const now = new Date().toISOString();
+
+      await db.runAsync(
+        `UPDATE tasks
+         SET status = ?, completed_at = ?, updated_at = ?
+         WHERE id = ? AND deleted_at IS NULL`,
+        [isDone ? "todo" : "done", isDone ? null : now, now, task.id],
+      );
+    },
+  };
+}

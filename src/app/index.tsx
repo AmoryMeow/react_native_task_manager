@@ -3,6 +3,8 @@ import { useState } from "react";
 import { FlatList, Pressable, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useSQLiteContext } from "expo-sqlite";
+
 import type { Task } from "@/entities/task/model/types";
 
 export default function HomeScreen() {
@@ -10,6 +12,8 @@ export default function HomeScreen() {
   const [title, setTitle] = useState("");
 
   const remainingTasks = tasks.filter((task) => task.status !== "done").length;
+
+  const db = useSQLiteContext();
 
   const addTask = () => {
     const trimmedTitle = title.trim();
