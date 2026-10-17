@@ -4,8 +4,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useSQLiteContext } from "expo-sqlite";
 
-import type { Task } from "@/entities/task/model/types";
+import type { Task, TaskSchedule } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
+
+type ScheduleOption = "inbox" | "today" | "tomorrow" | "soon" | "someday";
+
+const scheduleOptions: { value: ScheduleOption; label: string }[] = [
+  { value: "inbox", label: "Inbox" },
+  { value: "today", label: "Today" },
+  { value: "tomorrow", label: "Tomorrow" },
+  { value: "soon", label: "Soon" },
+  { value: "someday", label: "Someday" },
+];
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
@@ -21,6 +31,8 @@ export default function HomeScreen() {
     () => new Set(),
   );
   const [lastDeletedTask, setLastDeletedTask] = useState<Task | null>(null);
+
+  const [scheduleOption, setScheduleOption] = useState<ScheduleOption>("inbox");
 
   const remainingTasks = tasks.filter((task) => task.status !== "done").length;
 
@@ -77,12 +89,14 @@ export default function HomeScreen() {
     setIsSaving(true);
 
     try {
-      const task = await createTaskRepository(db).addTask(trimmedTitle, {
-        type: "inbox",
-      });
+      const task = await createTaskRepository(db).addTask(
+        trimmedTitle,
+        toTaskSchedule(scheduleOption),
+      );
 
       setTasks((currentTasks) => [task, ...currentTasks]);
       setTitle("");
+      setScheduleOption("inbox");
     } catch (error) {
       console.error("Failed to save task:", error);
       setActionError("Could not save task");
@@ -164,6 +178,31 @@ export default function HomeScreen() {
     }
   };
 
+  function getLocalDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
+
+  function toTaskSchedule(option: ScheduleOption): TaskSchedule {
+    if (option === "today" || option === "tomorrow") {
+      const date = new Date();
+
+      if (option === "tomorrow") {
+        date.setDate(date.getDate() + 1);
+      }
+
+      return {
+        type: "date",
+        date: getLocalDate(date),
+      };
+    }
+
+    return { type: option };
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-zinc-100">
       <View className="flex-1 px-5 pt-6">
@@ -206,6 +245,40 @@ export default function HomeScreen() {
           >
             <Text className="text-2xl font-light leading-7 text-white">+</Text>
           </Pressable>
+        </View>
+
+        <View className="mb-6 flex-row flex-wrap gap-2">
+          {scheduleOptions.map((option) => {
+            const isSelected = scheduleOption === option.value;
+
+            return (
+              <Pressable
+                key={option.value}
+                accessibilityRole="button"
+                accessibilityState={{
+                  selected: isSelected,
+                  disabled: isInputDisabled,
+                }}
+                disabled={isInputDisabled}
+                onPress={() => setScheduleOption(option.value)}
+                className={`${
+                  isSelected
+                    ? "rounded-full bg-zinc-950 px-4 py-2"
+                    : "rounded-full border border-zinc-300 bg-white px-4 py-2"
+                } ${isInputDisabled ? "opacity-40" : ""}`}
+              >
+                <Text
+                  className={
+                    isSelected
+                      ? "text-sm font-medium text-white"
+                      : "text-sm font-medium text-zinc-600"
+                  }
+                >
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         {isLoading && <Text>Loading tasks...</Text>}
