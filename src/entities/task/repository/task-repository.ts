@@ -1,3 +1,4 @@
+import * as Crypto from "expo-crypto";
 import type { SQLiteDatabase } from "expo-sqlite";
 import type { Task, TaskSchedule } from "../model/types";
 
@@ -54,7 +55,7 @@ export function createTaskRepository(db: SQLiteDatabase) {
           scheduled_date, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
-          crypto.randomUUID(),
+          Crypto.randomUUID(),
           title.trim(),
           "todo",
           schedule.type,
