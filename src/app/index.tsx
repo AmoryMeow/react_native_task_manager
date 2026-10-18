@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   SectionList,
@@ -302,193 +304,202 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-100">
-      <View className="flex-1 px-4 pt-4">
-        <View className="mb-4 flex-row items-center justify-between">
-          <Text className="text-3xl font-bold tracking-tight text-zinc-950">
-            My Tasks
-          </Text>
-
-          <View className="rounded-full bg-zinc-200 px-2.5 py-1">
-            <Text className="text-xs font-semibold text-zinc-600">
-              {remainingTasks} open
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        className="flex-1"
+      >
+        <View className="flex-1 px-4 pt-4">
+          <View className="mb-4 flex-row items-center justify-between">
+            <Text className="text-3xl font-bold tracking-tight text-zinc-950">
+              My Tasks
             </Text>
+
+            <View className="rounded-full bg-zinc-200 px-2.5 py-1">
+              <Text className="text-xs font-semibold text-zinc-600">
+                {remainingTasks} open
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <View className="mb-3 flex-row gap-2">
-          <TextInput
-            className="h-11 flex-1 rounded-xl border border-zinc-300 bg-white px-3.5 text-base text-zinc-950"
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Add a small next step"
-            placeholderTextColor="#71717a"
-            selectionColor="#18181b"
-            onSubmitEditing={() => void addTask()}
-            returnKeyType="done"
-            editable={!isInputDisabled}
-          />
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Add task"
-            className={`h-11 w-11 items-center justify-center rounded-xl bg-zinc-950 ${isAddDisabled ? "opacity-40" : "active:bg-zinc-700"}`}
-            onPress={() => void addTask()}
-            disabled={isAddDisabled}
-          >
-            <Text className="text-2xl font-light leading-7 text-white">+</Text>
-          </Pressable>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          className="mb-4 h-8 flex-none"
-          contentContainerClassName="items-center gap-1.5 pr-2"
-        >
-          {scheduleOptions.map((option) => {
-            const isSelected = scheduleOption === option.value;
-
-            return (
-              <Pressable
-                key={option.value}
-                accessibilityRole="button"
-                accessibilityState={{
-                  selected: isSelected,
-                  disabled: isInputDisabled,
-                }}
-                disabled={isInputDisabled}
-                onPress={() => setScheduleOption(option.value)}
-                className={`${
-                  isSelected
-                    ? "rounded-full bg-zinc-950 px-3 py-1.5"
-                    : "rounded-full border border-zinc-300 bg-white px-3 py-1.5 active:bg-zinc-50"
-                } ${isInputDisabled ? "opacity-40" : ""}`}
-              >
-                <Text
-                  className={
-                    isSelected
-                      ? "text-xs font-semibold text-white"
-                      : "text-xs font-medium text-zinc-600"
-                  }
-                >
-                  {option.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        {isLoading && (
-          <Text className="py-3 text-sm text-zinc-500">Loading tasks...</Text>
-        )}
-
-        {loadError && (
-          <View className="items-start rounded-xl border border-zinc-300 bg-white p-3">
-            <Text className="mb-2 text-sm text-zinc-700">{loadError}</Text>
+          <View className="mb-3 flex-row gap-2">
+            <TextInput
+              className="h-11 flex-1 rounded-xl border border-zinc-300 bg-white px-3.5 text-base text-zinc-950"
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Add a small next step"
+              placeholderTextColor="#71717a"
+              selectionColor="#18181b"
+              onSubmitEditing={() => void addTask()}
+              returnKeyType="done"
+              editable={!isInputDisabled}
+            />
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => void retryLoadingTasks()}
-              className="rounded-lg bg-zinc-900 px-3 py-2 active:bg-zinc-700"
+              accessibilityLabel="Add task"
+              className={`h-11 w-11 items-center justify-center rounded-xl bg-zinc-950 ${isAddDisabled ? "opacity-40" : "active:bg-zinc-700"}`}
+              onPress={() => void addTask()}
+              disabled={isAddDisabled}
             >
-              <Text className="text-xs font-semibold text-white">
-                Try again
+              <Text className="text-2xl font-light leading-7 text-white">
+                +
               </Text>
             </Pressable>
           </View>
-        )}
 
-        {actionError && (
-          <View
-            accessibilityRole="alert"
-            className="mb-3 flex-row items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2"
-          >
-            <Text className="flex-1 text-sm text-red-800">{actionError}</Text>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss error"
-              onPress={() => setActionError(null)}
-              className="ml-2 p-1.5"
-            >
-              <Text className="font-semibold text-red-800">×</Text>
-            </Pressable>
-          </View>
-        )}
-
-        {!isLoading && !loadError && (
-          <SectionList
-            className="flex-1"
-            contentContainerClassName="grow pb-6"
-            sections={sections}
-            keyExtractor={(task) => task.id}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            stickySectionHeadersEnabled={false}
-            extraData={collapsedGroups}
-            renderSectionHeader={({ section }) => {
-              const isCollapsed = collapsedGroups.has(section.id);
+            className="mb-4 h-8 flex-none"
+            contentContainerClassName="items-center gap-1.5 pr-2"
+          >
+            {scheduleOptions.map((option) => {
+              const isSelected = scheduleOption === option.value;
 
               return (
-                <TaskSectionHeader
-                  groupId={section.id}
-                  title={section.title}
-                  count={section.count}
-                  isCollapsed={isCollapsed}
-                  onToggle={toggleGroup}
-                />
-              );
-            }}
-            renderItem={({ item, section }) => {
-              return (
-                <TaskCard
-                  task={item}
-                  isUpdating={updatingTaskIds.has(item.id)}
-                  isEditing={editingTaskId === item.id}
-                  isEditDisabled={
-                    editingTaskId !== null && editingTaskId !== item.id
-                  }
-                  showSchedule={
-                    section.id === "earlier" || section.id === "upcoming"
-                  }
-                  onStartEditing={startEditingTask}
-                  onSaveTitle={saveTaskTitle}
-                  onCancelEditing={cancelEditingTask}
-                  onToggle={(task) => void toggleTask(task)}
-                  onDelete={(task) => void deleteTask(task)}
-                />
-              );
-            }}
-            ListEmptyComponent={
-              tasks.length === 0 ? (
-                <View className="flex-1 items-center justify-center px-8 pb-24">
-                  <Text className="mb-2 text-lg font-semibold text-zinc-900">
-                    Clear space for focus
+                <Pressable
+                  key={option.value}
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    selected: isSelected,
+                    disabled: isInputDisabled,
+                  }}
+                  disabled={isInputDisabled}
+                  onPress={() => setScheduleOption(option.value)}
+                  className={`${
+                    isSelected
+                      ? "rounded-full bg-zinc-950 px-3 py-1.5"
+                      : "rounded-full border border-zinc-300 bg-white px-3 py-1.5 active:bg-zinc-50"
+                  } ${isInputDisabled ? "opacity-40" : ""}`}
+                >
+                  <Text
+                    className={
+                      isSelected
+                        ? "text-xs font-semibold text-white"
+                        : "text-xs font-medium text-zinc-600"
+                    }
+                  >
+                    {option.label}
                   </Text>
-                  <Text className="text-center text-sm text-zinc-500">
-                    Add one small task to get started.
-                  </Text>
-                </View>
-              ) : null
-            }
-          />
-        )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
 
-        {lastDeletedTask && (
-          <View className="mb-2 flex-row items-center justify-between rounded-xl bg-zinc-900 px-3 py-2">
-            <Text className="text-sm font-medium text-white">Task deleted</Text>
+          {isLoading && (
+            <Text className="py-3 text-sm text-zinc-500">Loading tasks...</Text>
+          )}
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Undo delete"
-              onPress={() => void undoDelete()}
-              className="rounded-lg px-2.5 py-1.5 active:bg-zinc-700"
+          {loadError && (
+            <View className="items-start rounded-xl border border-zinc-300 bg-white p-3">
+              <Text className="mb-2 text-sm text-zinc-700">{loadError}</Text>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void retryLoadingTasks()}
+                className="rounded-lg bg-zinc-900 px-3 py-2 active:bg-zinc-700"
+              >
+                <Text className="text-xs font-semibold text-white">
+                  Try again
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {actionError && (
+            <View
+              accessibilityRole="alert"
+              className="mb-3 flex-row items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2"
             >
-              <Text className="font-semibold text-white">Undo</Text>
-            </Pressable>
-          </View>
-        )}
-      </View>
+              <Text className="flex-1 text-sm text-red-800">{actionError}</Text>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss error"
+                onPress={() => setActionError(null)}
+                className="ml-2 p-1.5"
+              >
+                <Text className="font-semibold text-red-800">×</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {!isLoading && !loadError && (
+            <SectionList
+              className="flex-1"
+              contentContainerClassName="grow pb-6"
+              sections={sections}
+              keyExtractor={(task) => task.id}
+              keyboardShouldPersistTaps="handled"
+              stickySectionHeadersEnabled={false}
+              extraData={collapsedGroups}
+              renderSectionHeader={({ section }) => {
+                const isCollapsed = collapsedGroups.has(section.id);
+
+                return (
+                  <TaskSectionHeader
+                    groupId={section.id}
+                    title={section.title}
+                    count={section.count}
+                    isCollapsed={isCollapsed}
+                    onToggle={toggleGroup}
+                  />
+                );
+              }}
+              renderItem={({ item, section }) => {
+                return (
+                  <TaskCard
+                    task={item}
+                    isUpdating={updatingTaskIds.has(item.id)}
+                    isEditing={editingTaskId === item.id}
+                    isEditDisabled={
+                      editingTaskId !== null && editingTaskId !== item.id
+                    }
+                    showSchedule={
+                      section.id === "earlier" || section.id === "upcoming"
+                    }
+                    onStartEditing={startEditingTask}
+                    onSaveTitle={saveTaskTitle}
+                    onCancelEditing={cancelEditingTask}
+                    onToggle={(task) => void toggleTask(task)}
+                    onDelete={(task) => void deleteTask(task)}
+                  />
+                );
+              }}
+              ListEmptyComponent={
+                tasks.length === 0 ? (
+                  <View className="flex-1 items-center justify-center px-8 pb-24">
+                    <Text className="mb-2 text-lg font-semibold text-zinc-900">
+                      Clear space for focus
+                    </Text>
+                    <Text className="text-center text-sm text-zinc-500">
+                      Add one small task to get started.
+                    </Text>
+                  </View>
+                ) : null
+              }
+            />
+          )}
+
+          {lastDeletedTask && (
+            <View className="mb-2 flex-row items-center justify-between rounded-xl bg-zinc-900 px-3 py-2">
+              <Text className="text-sm font-medium text-white">
+                Task deleted
+              </Text>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Undo delete"
+                onPress={() => void undoDelete()}
+                className="rounded-lg px-2.5 py-1.5 active:bg-zinc-700"
+              >
+                <Text className="font-semibold text-white">Undo</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
