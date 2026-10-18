@@ -40,6 +40,7 @@ export default function HomeScreen() {
   const [updatingTaskIds, setUpdatingTaskIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [lastDeletedTask, setLastDeletedTask] = useState<Task | null>(null);
 
   const [scheduleOption, setScheduleOption] = useState<ScheduleOption>("inbox");
@@ -155,6 +156,69 @@ export default function HomeScreen() {
     } catch (error) {
       console.error("Failed to toggle task:", error);
       setActionError("Could not update task");
+    } finally {
+      setUpdatingTaskIds((prev) => {
+        const next = new Set(prev);
+        next.delete(task.id);
+        return next;
+      });
+    }
+  };
+
+  const startEditingTask = (task: Task) => {
+    if (
+      updatingTaskIds.has(task.id) ||
+      (editingTaskId !== null && editingTaskId !== task.id)
+    ) {
+      return;
+    }
+
+    setActionError(null);
+    setEditingTaskId(task.id);
+  };
+
+  const cancelEditingTask = (task: Task) => {
+    setEditingTaskId((currentTaskId) =>
+      currentTaskId === task.id ? null : currentTaskId,
+    );
+    setActionError(null);
+  };
+
+  const saveTaskTitle = async (
+    task: Task,
+    nextTitle: string,
+  ): Promise<boolean> => {
+    const trimmedTitle = nextTitle.trim();
+
+    if (!trimmedTitle) {
+      setActionError("Task title cannot be empty");
+      return false;
+    }
+
+    if (trimmedTitle === task.title) {
+      setActionError(null);
+      setEditingTaskId((currentTaskId) =>
+        currentTaskId === task.id ? null : currentTaskId,
+      );
+      return true;
+    }
+
+    if (updatingTaskIds.has(task.id)) return false;
+
+    setActionError(null);
+    setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
+
+    try {
+      await createTaskRepository(db).updateTaskTitle(task, trimmedTitle);
+      setTasks(await getTasks());
+      setEditingTaskId((currentTaskId) =>
+        currentTaskId === task.id ? null : currentTaskId,
+      );
+      return true;
+    } catch (error) {
+      console.error("Failed to update task title:", error);
+      setActionError("Could not update task title");
+      return false;
     } finally {
       setUpdatingTaskIds((prev) => {
         const next = new Set(prev);
@@ -380,9 +444,16 @@ export default function HomeScreen() {
                 <TaskCard
                   task={item}
                   isUpdating={updatingTaskIds.has(item.id)}
+                  isEditing={editingTaskId === item.id}
+                  isEditDisabled={
+                    editingTaskId !== null && editingTaskId !== item.id
+                  }
                   showSchedule={
                     section.id === "earlier" || section.id === "upcoming"
                   }
+                  onStartEditing={startEditingTask}
+                  onSaveTitle={saveTaskTitle}
+                  onCancelEditing={cancelEditingTask}
                   onToggle={(task) => void toggleTask(task)}
                   onDelete={(task) => void deleteTask(task)}
                 />

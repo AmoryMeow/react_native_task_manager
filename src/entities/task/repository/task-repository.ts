@@ -105,6 +105,53 @@ export function createTaskRepository(db: SQLiteDatabase) {
       return updatedTask;
     },
 
+    async updateTaskTitle(task: Task, title: string): Promise<Task> {
+      const trimmedTitle = title.trim();
+
+      if (!trimmedTitle) {
+        throw new Error("Task title cannot be empty");
+      }
+
+      const currentTask = await db.getFirstAsync<
+        Pick<TaskRow, "title" | "updated_at">
+      >(
+        `SELECT title, updated_at
+         FROM tasks
+         WHERE id = ? AND deleted_at IS NULL`,
+        [task.id],
+      );
+
+      if (!currentTask) {
+        throw new Error(`Task ${task.id} was not found`);
+      }
+
+      if (currentTask.title === trimmedTitle) {
+        return {
+          ...task,
+          title: currentTask.title,
+          updatedAt: currentTask.updated_at,
+        };
+      }
+
+      const updatedAt = new Date().toISOString();
+      const result = await db.runAsync(
+        `UPDATE tasks
+         SET title = ?, updated_at = ?
+         WHERE id = ? AND deleted_at IS NULL`,
+        [trimmedTitle, updatedAt, task.id],
+      );
+
+      if (result.changes === 0) {
+        throw new Error(`Task ${task.id} was not found`);
+      }
+
+      return {
+        ...task,
+        title: trimmedTitle,
+        updatedAt,
+      };
+    },
+
     async deleteTask(id: string): Promise<string> {
       const now = new Date().toISOString();
 
