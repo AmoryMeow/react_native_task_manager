@@ -213,8 +213,11 @@ export function createTaskRepository(db: SQLiteDatabase) {
       taskId: string,
       schedule: TaskSchedule,
     ): Promise<Task> {
-      const { schedule: normalizedSchedule, scheduleType, scheduledDate } =
-        getScheduleColumns(schedule);
+      const {
+        schedule: normalizedSchedule,
+        scheduleType,
+        scheduledDate,
+      } = getScheduleColumns(schedule);
 
       const currentTask = await db.getFirstAsync<TaskRow>(
         `SELECT * FROM tasks
@@ -248,6 +251,60 @@ export function createTaskRepository(db: SQLiteDatabase) {
       return {
         ...mapTask(currentTask),
         schedule: normalizedSchedule,
+        updatedAt,
+      };
+    },
+
+    async moveTaskToSchedule(
+      taskId: string,
+      schedule: TaskSchedule,
+    ): Promise<Task> {
+      const {
+        schedule: normalizedSchedule,
+        scheduleType,
+        scheduledDate,
+      } = getScheduleColumns(schedule);
+
+      const currentTask = await db.getFirstAsync<TaskRow>(
+        `SELECT * FROM tasks
+         WHERE id = ? AND deleted_at IS NULL`,
+        [taskId],
+      );
+
+      if (!currentTask) {
+        throw new Error(`Task ${taskId} was not found`);
+      }
+
+      const shouldReopen = currentTask.status === "done";
+
+      if (
+        !shouldReopen &&
+        currentTask.schedule_type === scheduleType &&
+        currentTask.scheduled_date === scheduledDate
+      ) {
+        return mapTask(currentTask);
+      }
+
+      const updatedAt = new Date().toISOString();
+      const status = shouldReopen ? "todo" : currentTask.status;
+      const completedAt = shouldReopen ? null : currentTask.completed_at;
+      const result = await db.runAsync(
+        `UPDATE tasks
+         SET schedule_type = ?, scheduled_date = ?, status = ?,
+             completed_at = ?, updated_at = ?
+         WHERE id = ? AND deleted_at IS NULL`,
+        [scheduleType, scheduledDate, status, completedAt, updatedAt, taskId],
+      );
+
+      if (result.changes === 0) {
+        throw new Error(`Task ${taskId} was not found`);
+      }
+
+      return {
+        ...mapTask(currentTask),
+        status,
+        schedule: normalizedSchedule,
+        completedAt: completedAt ?? undefined,
         updatedAt,
       };
     },

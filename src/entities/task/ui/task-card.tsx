@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
 import { formatTaskSchedule } from "../lib/format-task-schedule";
 import type { Task } from "../model/types";
 
-interface TaskCardProps {
+export interface TaskCardProps {
   task: Task;
+  dragHandle?: ReactNode;
   isUpdating: boolean;
   isEditing: boolean;
   isEditDisabled: boolean;
@@ -19,6 +20,7 @@ interface TaskCardProps {
 
 export function TaskCard({
   task,
+  dragHandle,
   isUpdating,
   isEditing,
   isEditDisabled,
@@ -121,9 +123,7 @@ export function TaskCard({
       <View className="h-full flex-1 justify-center pr-2">
         <TextInput
           ref={titleInputRef}
-          accessibilityLabel={
-            isEditing ? "Task title" : `Edit ${task.title}`
-          }
+          accessibilityLabel={isEditing ? "Task title" : `Edit ${task.title}`}
           className={`h-6 p-0 text-sm leading-5 ${
             isEditing
               ? "font-medium text-zinc-950"
@@ -146,9 +146,7 @@ export function TaskCard({
           returnKeyType="done"
           selectionColor="#18181b"
           submitBehavior="blurAndSubmit"
-          style={
-            showSchedule ? undefined : { transform: [{ translateY: -1 }] }
-          }
+          style={showSchedule ? undefined : { transform: [{ translateY: -1 }] }}
           textAlignVertical="center"
           value={isEditing ? draftTitle : task.title}
         />
@@ -188,10 +186,12 @@ export function TaskCard({
           if (isEditing) cancelRequestedRef.current = true;
         }}
         onPress={deleteTask}
-        className="h-full w-11 items-center justify-center border-l border-zinc-100 active:bg-zinc-100"
+        className="h-full w-9 items-center justify-center border-l border-zinc-100 active:bg-zinc-100"
       >
-        <Text className="text-xl text-zinc-400">×</Text>
+        <Text className="text-lg text-zinc-400">×</Text>
       </Pressable>
+
+      {dragHandle}
     </View>
   );
 }

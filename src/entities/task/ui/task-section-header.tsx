@@ -8,6 +8,7 @@ interface TaskSectionHeaderProps {
   title: string;
   count: number;
   isCollapsed: boolean;
+  disabled?: boolean;
   onToggle: (groupId: TaskGroupId) => void;
 }
 
@@ -16,6 +17,7 @@ export function TaskSectionHeader({
   title,
   count,
   isCollapsed,
+  disabled = false,
   onToggle,
 }: TaskSectionHeaderProps) {
   return (
@@ -23,7 +25,8 @@ export function TaskSectionHeader({
       onPress={() => onToggle(groupId)}
       accessibilityRole="button"
       accessibilityLabel={`${isCollapsed ? "Expand" : "Collapse"} ${title}`}
-      accessibilityState={{ expanded: !isCollapsed }}
+      accessibilityState={{ disabled, expanded: !isCollapsed }}
+      disabled={disabled}
       className="mb-2 mt-4 self-start flex-row items-center py-1"
     >
       <Text className="text-base font-semibold text-zinc-900">{title}</Text>

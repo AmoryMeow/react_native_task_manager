@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
   SectionList,
+  StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useSQLiteContext } from "expo-sqlite";
@@ -16,10 +18,27 @@ import { useSQLiteContext } from "expo-sqlite";
 import { groupTasks, type TaskGroupId } from "@/entities/task/lib/group-tasks";
 import type { Task, TaskSchedule } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
-import { TaskCard } from "@/entities/task/ui/task-card";
-import { TaskSectionHeader } from "@/entities/task/ui/task-section-header";
+import {
+  isDropTargetGroup,
+  TASK_GROUP_IDS,
+} from "@/features/task-dnd/model/task-drag";
+import { useTaskDragController } from "@/features/task-dnd/model/use-task-drag-controller";
+import { DraggableTaskCard } from "@/features/task-dnd/ui/draggable-task-card";
+import { DropTargetSectionHeader } from "@/features/task-dnd/ui/drop-target-section-header";
+import { TaskDragPreview } from "@/features/task-dnd/ui/task-drag-preview";
 
 type ScheduleOption = "inbox" | "today" | "tomorrow" | "soon" | "someday";
+
+type TaskSection = ReturnType<typeof groupTasks>[number] & { count: number };
+
+interface ActiveDrag {
+  taskId: string;
+  groupId: TaskGroupId;
+}
+
+const AnimatedSectionList = Animated.createAnimatedComponent(
+  SectionList,
+) as unknown as typeof SectionList;
 
 const scheduleOptions: { value: ScheduleOption; label: string }[] = [
   { value: "inbox", label: "Inbox" },
@@ -28,6 +47,44 @@ const scheduleOptions: { value: ScheduleOption; label: string }[] = [
   { value: "soon", label: "Soon" },
   { value: "someday", label: "Someday" },
 ];
+
+function getLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function toTaskSchedule(option: ScheduleOption): TaskSchedule {
+  if (option === "today" || option === "tomorrow") {
+    const date = new Date();
+
+    if (option === "tomorrow") {
+      date.setDate(date.getDate() + 1);
+    }
+
+    return {
+      type: "date",
+      date: getLocalDate(date),
+    };
+  }
+
+  return { type: option };
+}
+
+function getDestinationSchedule(groupId: TaskGroupId): TaskSchedule | null {
+  switch (groupId) {
+    case "today":
+      return { type: "date", date: getLocalDate(new Date()) };
+    case "soon":
+    case "someday":
+    case "inbox":
+      return { type: groupId };
+    default:
+      return null;
+  }
+}
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
@@ -44,6 +101,8 @@ export default function HomeScreen() {
   );
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [lastDeletedTask, setLastDeletedTask] = useState<Task | null>(null);
+  const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
+  const movingTaskIdsRef = useRef(new Set<string>());
 
   const [scheduleOption, setScheduleOption] = useState<ScheduleOption>("inbox");
 
@@ -67,11 +126,29 @@ export default function HomeScreen() {
 
   const remainingTasks = tasks.filter((task) => task.status !== "done").length;
 
-  const sections = groupTasks(tasks).map((group) => ({
-    ...group,
-    count: group.data.length,
-    data: collapsedGroups.has(group.id) ? [] : group.data,
-  }));
+  const sections = useMemo<TaskSection[]>(
+    () =>
+      groupTasks(tasks).map((group) => ({
+        ...group,
+        count: group.data.length,
+        data: collapsedGroups.has(group.id) ? [] : group.data,
+      })),
+    [collapsedGroups, tasks],
+  );
+  const hasUpcoming = sections.some((section) => section.id === "upcoming");
+  const hasCompleted = sections.some((section) => section.id === "completed");
+
+  const {
+    dragRootRef,
+    dragValues,
+    floatingStyle,
+    listRef,
+    onContentSizeChange,
+    onLayout,
+    scrollHandler,
+    targetRefs,
+  } = useTaskDragController<Task, TaskSection>();
+
   const getTasks = useCallback(() => createTaskRepository(db).getTasks(), [db]);
 
   useEffect(() => {
@@ -98,6 +175,62 @@ export default function HomeScreen() {
       isCancelled = true;
     };
   }, [getTasks]);
+
+  const startDragging = useCallback((taskId: string, groupId: TaskGroupId) => {
+    if (movingTaskIdsRef.current.has(taskId)) return;
+
+    setActiveDrag({ taskId, groupId });
+  }, []);
+
+  const cancelDragging = useCallback(() => {
+    setActiveDrag(null);
+  }, []);
+
+  const finishDragging = useCallback(
+    (taskId: string, sourceGroupId: TaskGroupId, targetIndex: number) => {
+      setActiveDrag(null);
+
+      const destinationGroupId = TASK_GROUP_IDS[targetIndex];
+
+      if (
+        !destinationGroupId ||
+        destinationGroupId === sourceGroupId ||
+        !isDropTargetGroup(destinationGroupId)
+      ) {
+        return;
+      }
+
+      const schedule = getDestinationSchedule(destinationGroupId);
+
+      if (!schedule || movingTaskIdsRef.current.has(taskId)) return;
+
+      movingTaskIdsRef.current.add(taskId);
+      setActionError(null);
+      setUpdatingTaskIds((current) => new Set(current).add(taskId));
+
+      void createTaskRepository(db)
+        .moveTaskToSchedule(taskId, schedule)
+        .then(() => getTasks())
+        .then(setTasks)
+        .catch((error) => {
+          console.error("Failed to move task:", error);
+          setActionError("Could not move task");
+        })
+        .finally(() => {
+          movingTaskIdsRef.current.delete(taskId);
+          setUpdatingTaskIds((current) => {
+            const next = new Set(current);
+            next.delete(taskId);
+            return next;
+          });
+        });
+    },
+    [db, getTasks],
+  );
+
+  const draggedTask = activeDrag
+    ? (tasks.find((task) => task.id === activeDrag.taskId) ?? null)
+    : null;
 
   const retryLoadingTasks = async () => {
     setIsLoading(true);
@@ -142,7 +275,9 @@ export default function HomeScreen() {
   };
 
   const toggleTask = async (task: Task) => {
-    if (updatingTaskIds.has(task.id)) return;
+    if (updatingTaskIds.has(task.id) || movingTaskIdsRef.current.has(task.id)) {
+      return;
+    }
 
     setActionError(null);
     setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
@@ -170,6 +305,7 @@ export default function HomeScreen() {
   const startEditingTask = (task: Task) => {
     if (
       updatingTaskIds.has(task.id) ||
+      movingTaskIdsRef.current.has(task.id) ||
       (editingTaskId !== null && editingTaskId !== task.id)
     ) {
       return;
@@ -205,7 +341,9 @@ export default function HomeScreen() {
       return true;
     }
 
-    if (updatingTaskIds.has(task.id)) return false;
+    if (updatingTaskIds.has(task.id) || movingTaskIdsRef.current.has(task.id)) {
+      return false;
+    }
 
     setActionError(null);
     setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
@@ -231,7 +369,9 @@ export default function HomeScreen() {
   };
 
   const deleteTask = async (task: Task) => {
-    if (updatingTaskIds.has(task.id)) return;
+    if (updatingTaskIds.has(task.id) || movingTaskIdsRef.current.has(task.id)) {
+      return;
+    }
 
     setActionError(null);
     setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
@@ -276,31 +416,6 @@ export default function HomeScreen() {
       setActionError("Could not restore task");
     }
   };
-
-  function getLocalDate(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return `${year}-${month}-${day}`;
-  }
-
-  function toTaskSchedule(option: ScheduleOption): TaskSchedule {
-    if (option === "today" || option === "tomorrow") {
-      const date = new Date();
-
-      if (option === "tomorrow") {
-        date.setDate(date.getDate() + 1);
-      }
-
-      return {
-        type: "date",
-        date: getLocalDate(date),
-      };
-    }
-
-    return { type: option };
-  }
 
   return (
     <SafeAreaView className="flex-1 bg-zinc-100">
@@ -426,61 +541,109 @@ export default function HomeScreen() {
           )}
 
           {!isLoading && !loadError && (
-            <SectionList
-              className="flex-1"
-              contentContainerClassName="grow pb-6"
-              sections={sections}
-              keyExtractor={(task) => task.id}
-              keyboardShouldPersistTaps="handled"
-              stickySectionHeadersEnabled={false}
-              extraData={collapsedGroups}
-              renderSectionHeader={({ section }) => {
-                const isCollapsed = collapsedGroups.has(section.id);
+            <Animated.View
+              collapsable={false}
+              ref={dragRootRef}
+              style={styles.dragArea}
+            >
+              <AnimatedSectionList<Task, TaskSection>
+                className="flex-1"
+                contentContainerClassName="grow pb-6"
+                sections={sections}
+                keyExtractor={(task) => task.id}
+                keyboardShouldPersistTaps="handled"
+                stickySectionHeadersEnabled={false}
+                extraData={{ activeDrag, collapsedGroups, editingTaskId }}
+                onContentSizeChange={onContentSizeChange}
+                onLayout={onLayout}
+                onScroll={scrollHandler}
+                ref={listRef}
+                renderSectionHeader={({ section }) => {
+                  const isCollapsed = collapsedGroups.has(section.id);
 
-                return (
-                  <TaskSectionHeader
-                    groupId={section.id}
-                    title={section.title}
-                    count={section.count}
-                    isCollapsed={isCollapsed}
-                    onToggle={toggleGroup}
-                  />
-                );
-              }}
-              renderItem={({ item, section }) => {
-                return (
-                  <TaskCard
-                    task={item}
-                    isUpdating={updatingTaskIds.has(item.id)}
-                    isEditing={editingTaskId === item.id}
-                    isEditDisabled={
-                      editingTaskId !== null && editingTaskId !== item.id
-                    }
+                  return (
+                    <DropTargetSectionHeader
+                      count={section.count}
+                      groupId={section.id}
+                      isCollapsed={isCollapsed}
+                      isDragging={activeDrag !== null}
+                      onToggle={toggleGroup}
+                      targetRef={targetRefs[section.id]}
+                      title={section.title}
+                    />
+                  );
+                }}
+                renderItem={({ item, section }) => {
+                  const isUpdating = updatingTaskIds.has(item.id);
+
+                  return (
+                    <DraggableTaskCard
+                      dragValues={dragValues}
+                      groupId={section.id}
+                      hasCompleted={hasCompleted}
+                      hasUpcoming={hasUpcoming}
+                      isDragDisabled={
+                        editingTaskId !== null ||
+                        isUpdating ||
+                        (activeDrag !== null && activeDrag.taskId !== item.id)
+                      }
+                      isDragging={activeDrag?.taskId === item.id}
+                      isUpdating={isUpdating}
+                      isEditing={editingTaskId === item.id}
+                      isEditDisabled={
+                        activeDrag !== null ||
+                        (editingTaskId !== null && editingTaskId !== item.id)
+                      }
+                      onDragCancel={cancelDragging}
+                      onDragEnd={finishDragging}
+                      onDragStart={startDragging}
+                      rootRef={dragRootRef}
+                      targetRefs={targetRefs}
+                      showSchedule={
+                        section.id === "earlier" || section.id === "upcoming"
+                      }
+                      task={item}
+                      onStartEditing={startEditingTask}
+                      onSaveTitle={saveTaskTitle}
+                      onCancelEditing={cancelEditingTask}
+                      onToggle={(task) => void toggleTask(task)}
+                      onDelete={(task) => void deleteTask(task)}
+                    />
+                  );
+                }}
+                scrollEventThrottle={16}
+                ListFooterComponent={
+                  tasks.length === 0 ? (
+                    <View className="flex-1 items-center justify-center px-8 pb-24">
+                      <Text className="mb-2 text-lg font-semibold text-zinc-900">
+                        Clear space for focus
+                      </Text>
+                      <Text className="text-center text-sm text-zinc-500">
+                        Add one small task to get started.
+                      </Text>
+                    </View>
+                  ) : null
+                }
+                ListFooterComponentStyle={
+                  tasks.length === 0 ? { flex: 1 } : null
+                }
+              />
+
+              {draggedTask && activeDrag ? (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[styles.floatingCard, floatingStyle]}
+                >
+                  <TaskDragPreview
                     showSchedule={
-                      section.id === "earlier" || section.id === "upcoming"
+                      activeDrag.groupId === "earlier" ||
+                      activeDrag.groupId === "upcoming"
                     }
-                    onStartEditing={startEditingTask}
-                    onSaveTitle={saveTaskTitle}
-                    onCancelEditing={cancelEditingTask}
-                    onToggle={(task) => void toggleTask(task)}
-                    onDelete={(task) => void deleteTask(task)}
+                    task={draggedTask}
                   />
-                );
-              }}
-              ListFooterComponent={
-                tasks.length === 0 ? (
-                  <View className="flex-1 items-center justify-center px-8 pb-24">
-                    <Text className="mb-2 text-lg font-semibold text-zinc-900">
-                      Clear space for focus
-                    </Text>
-                    <Text className="text-center text-sm text-zinc-500">
-                      Add one small task to get started.
-                    </Text>
-                  </View>
-                ) : null
-              }
-              ListFooterComponentStyle={tasks.length === 0 ? { flex: 1 } : null}
-            />
+                </Animated.View>
+              ) : null}
+            </Animated.View>
           )}
 
           {lastDeletedTask && (
@@ -504,3 +667,21 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  dragArea: {
+    flex: 1,
+  },
+  floatingCard: {
+    elevation: 8,
+    left: 0,
+    opacity: 0.96,
+    position: "absolute",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    top: 0,
+    zIndex: 100,
+  },
+});
