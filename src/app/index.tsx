@@ -467,7 +467,7 @@ export default function HomeScreen() {
                   />
                 );
               }}
-              ListEmptyComponent={
+              ListFooterComponent={
                 tasks.length === 0 ? (
                   <View className="flex-1 items-center justify-center px-8 pb-24">
                     <Text className="mb-2 text-lg font-semibold text-zinc-900">
@@ -479,6 +479,7 @@ export default function HomeScreen() {
                   </View>
                 ) : null
               }
+              ListFooterComponentStyle={tasks.length === 0 ? { flex: 1 } : null}
             />
           )}
 

@@ -9,6 +9,13 @@ export interface TaskGroup {
   data: Task[];
 }
 
+const alwaysVisibleGroupIds = new Set<TaskGroupId>([
+  "today",
+  "soon",
+  "someday",
+  "inbox",
+]);
+
 function toLocalDateString(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -65,5 +72,7 @@ export function groupTasks(tasks: Task[], today = new Date()): TaskGroup[] {
     groupById.get(groupId)!.data.push(task);
   }
 
-  return groups.filter((group) => group.data.length > 0);
+  return groups.filter(
+    (group) => group.data.length > 0 || alwaysVisibleGroupIds.has(group.id),
+  );
 }

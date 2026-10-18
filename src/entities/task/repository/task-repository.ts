@@ -15,6 +15,63 @@ interface TaskRow {
   completed_at: string | null;
 }
 
+interface ScheduleColumns {
+  schedule: TaskSchedule;
+  scheduleType: TaskSchedule["type"];
+  scheduledDate: string | null;
+}
+
+function isValidLocalDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  if (!match) return false;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsedDate = new Date(`${value}T00:00:00.000Z`);
+
+  return (
+    year >= 1 &&
+    !Number.isNaN(parsedDate.getTime()) &&
+    parsedDate.getUTCFullYear() === year &&
+    parsedDate.getUTCMonth() + 1 === month &&
+    parsedDate.getUTCDate() === day
+  );
+}
+
+function getScheduleColumns(schedule: TaskSchedule): ScheduleColumns {
+  const type = (schedule as { type?: unknown } | null)?.type;
+
+  switch (type) {
+    case "date": {
+      const date = (schedule as { date?: unknown }).date;
+
+      if (typeof date !== "string" || !isValidLocalDate(date)) {
+        throw new Error("Task schedule date must be a valid YYYY-MM-DD date");
+      }
+
+      return {
+        schedule: { type, date },
+        scheduleType: type,
+        scheduledDate: date,
+      };
+    }
+
+    case "inbox":
+    case "soon":
+    case "someday":
+      return {
+        schedule: { type },
+        scheduleType: type,
+        scheduledDate: null,
+      };
+
+    default:
+      throw new Error("Invalid task schedule");
+  }
+}
+
 function mapTask(row: TaskRow): Task {
   const schedule: TaskSchedule =
     row.schedule_type === "date"
@@ -148,6 +205,49 @@ export function createTaskRepository(db: SQLiteDatabase) {
       return {
         ...task,
         title: trimmedTitle,
+        updatedAt,
+      };
+    },
+
+    async updateTaskSchedule(
+      taskId: string,
+      schedule: TaskSchedule,
+    ): Promise<Task> {
+      const { schedule: normalizedSchedule, scheduleType, scheduledDate } =
+        getScheduleColumns(schedule);
+
+      const currentTask = await db.getFirstAsync<TaskRow>(
+        `SELECT * FROM tasks
+         WHERE id = ? AND deleted_at IS NULL`,
+        [taskId],
+      );
+
+      if (!currentTask) {
+        throw new Error(`Task ${taskId} was not found`);
+      }
+
+      if (
+        currentTask.schedule_type === scheduleType &&
+        currentTask.scheduled_date === scheduledDate
+      ) {
+        return mapTask(currentTask);
+      }
+
+      const updatedAt = new Date().toISOString();
+      const result = await db.runAsync(
+        `UPDATE tasks
+         SET schedule_type = ?, scheduled_date = ?, updated_at = ?
+         WHERE id = ? AND deleted_at IS NULL`,
+        [scheduleType, scheduledDate, updatedAt, taskId],
+      );
+
+      if (result.changes === 0) {
+        throw new Error(`Task ${taskId} was not found`);
+      }
+
+      return {
+        ...mapTask(currentTask),
+        schedule: normalizedSchedule,
         updatedAt,
       };
     },
