@@ -2,10 +2,10 @@ import { useCallback, useMemo } from "react";
 import { StyleSheet, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  type AnimatedRef,
   measure,
   useAnimatedRef,
   useSharedValue,
+  type AnimatedRef,
 } from "react-native-reanimated";
 import { runOnJS } from "react-native-worklets";
 
@@ -37,6 +37,7 @@ interface DraggableTaskCardProps extends TaskCardProps {
   onDragStart: (taskId: string, sourceGroupId: TaskGroupId) => void;
   rootRef: AnimatedRef<View>;
   targetRefs: TaskGroupRefs;
+  onOpenDetails: () => void;
 }
 
 export function DraggableTaskCard({

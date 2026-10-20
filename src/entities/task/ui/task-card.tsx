@@ -1,7 +1,7 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
-import { formatTaskSchedule } from "../lib/format-task-schedule";
+import { formatTaskSchedule } from "@/entities/task/lib/format-task-schedule";
 import type { Task } from "../model/types";
 
 export interface TaskCardProps {
@@ -16,6 +16,7 @@ export interface TaskCardProps {
   onCancelEditing: (task: Task) => void;
   onToggle: (task: Task) => void;
   onDelete: (task: Task) => void;
+  onOpenDetails: () => void;
 }
 
 export function TaskCard({
@@ -30,6 +31,7 @@ export function TaskCard({
   onCancelEditing,
   onToggle,
   onDelete,
+  onOpenDetails,
 }: TaskCardProps) {
   const isDone = task.status === "done";
   const [draftTitle, setDraftTitle] = useState(task.title);
@@ -160,6 +162,16 @@ export function TaskCard({
           </Text>
         )}
       </View>
+
+      <Pressable
+        onPress={onOpenDetails}
+        accessibilityRole="button"
+        accessibilityLabel="Open task details"
+        hitSlop={8}
+        className="h-11 w-11 items-center justify-center"
+      >
+        <Text className="text-xl text-zinc-500">⋯</Text>
+      </Pressable>
 
       {isEditing && (
         <Pressable

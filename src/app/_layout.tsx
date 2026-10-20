@@ -12,6 +12,16 @@ export default function RootLayout() {
       <SQLiteProvider databaseName="tasks.db" onInit={migrateDb} useSuspense>
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="task/[id]"
+            options={{
+              presentation: "formSheet",
+              sheetAllowedDetents: [0.5, 0.9],
+              sheetInitialDetentIndex: 0,
+              sheetGrabberVisible: true,
+              headerShown: false,
+            }}
+          />
         </Stack>
       </SQLiteProvider>
     </GestureHandlerRootView>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -26,6 +26,7 @@ import { useTaskDragController } from "@/features/task-dnd/model/use-task-drag-c
 import { DraggableTaskCard } from "@/features/task-dnd/ui/draggable-task-card";
 import { DropTargetSectionHeader } from "@/features/task-dnd/ui/drop-target-section-header";
 import { TaskDragPreview } from "@/features/task-dnd/ui/task-drag-preview";
+import { router, useFocusEffect } from "expo-router";
 
 type ScheduleOption = "inbox" | "today" | "tomorrow" | "soon" | "someday";
 
@@ -109,7 +110,6 @@ export default function HomeScreen() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<TaskGroupId>>(
     () => new Set(["completed"]),
   );
-
   const toggleGroup = (id: TaskGroupId) => {
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
@@ -151,30 +151,35 @@ export default function HomeScreen() {
 
   const getTasks = useCallback(() => createTaskRepository(db).getTasks(), [db]);
 
-  useEffect(() => {
-    let isCancelled = false;
+  useFocusEffect(
+    useCallback(() => {
+      let isCancelled = false;
 
-    const loadInitialTasks = async () => {
-      try {
-        const savedTasks = await getTasks();
+      const loadTasks = async () => {
+        try {
+          const savedTasks = await getTasks();
 
-        if (!isCancelled) setTasks(savedTasks);
-      } catch (error) {
-        if (isCancelled) return;
+          if (!isCancelled) {
+            setTasks(savedTasks);
+            setLoadError(null);
+          }
+        } catch (error) {
+          if (isCancelled) return;
 
-        console.error("Failed to load tasks:", error);
-        setLoadError("Could not load tasks");
-      } finally {
-        if (!isCancelled) setIsLoading(false);
-      }
-    };
+          console.error("Failed to load tasks:", error);
+          setLoadError("Could not load tasks");
+        } finally {
+          if (!isCancelled) setIsLoading(false);
+        }
+      };
 
-    void loadInitialTasks();
+      void loadTasks();
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [getTasks]);
+      return () => {
+        isCancelled = true;
+      };
+    }, [getTasks]),
+  );
 
   const startDragging = useCallback((taskId: string, groupId: TaskGroupId) => {
     if (movingTaskIdsRef.current.has(taskId)) return;
@@ -428,7 +433,6 @@ export default function HomeScreen() {
             <Text className="text-3xl font-bold tracking-tight text-zinc-950">
               My Tasks
             </Text>
-
             <View className="rounded-full bg-zinc-200 px-2.5 py-1">
               <Text className="text-xs font-semibold text-zinc-600">
                 {remainingTasks} open
@@ -608,6 +612,12 @@ export default function HomeScreen() {
                       onCancelEditing={cancelEditingTask}
                       onToggle={(task) => void toggleTask(task)}
                       onDelete={(task) => void deleteTask(task)}
+                      onOpenDetails={() =>
+                        router.push({
+                          pathname: "/task/[id]",
+                          params: { id: item.id },
+                        })
+                      }
                     />
                   );
                 }}

@@ -103,6 +103,28 @@ export function createTaskRepository(db: SQLiteDatabase) {
       return rows.map(mapTask);
     },
 
+    async getTaskById(id: string): Promise<Task | null> {
+      const row = await db.getFirstAsync<TaskRow>(
+        `SELECT * FROM tasks
+         WHERE id = ? AND deleted_at IS NULL`,
+        [id],
+      );
+
+      return row ? mapTask(row) : null;
+    },
+
+    async updateTaskDescription(
+      id: string,
+      description: string,
+    ): Promise<void> {
+      await db.runAsync(
+        `UPDATE tasks
+         SET description = ?, updated_at = ?
+         WHERE id = ? AND deleted_at IS NULL`,
+        [description, new Date().toISOString(), id],
+      );
+    },
+
     async addTask(title: string, schedule: TaskSchedule): Promise<Task> {
       const now = new Date().toISOString();
       const task: Task = {
