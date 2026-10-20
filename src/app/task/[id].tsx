@@ -6,14 +6,52 @@ import {
   Alert,
   Keyboard,
   Pressable,
+  ScrollView,
   Text,
   TextInput,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
 
-import type { Task } from "../../entities/task/model/types";
+import {
+  formatTaskSchedule,
+  toLocalDateString,
+} from "../../entities/task/lib/format-task-schedule";
+import type { Task, TaskSchedule } from "../../entities/task/model/types";
 import { createTaskRepository } from "../../entities/task/repository/task-repository";
+
+type ScheduleOption = "inbox" | "today" | "tomorrow" | "soon" | "someday";
+
+const scheduleOptions: { label: string; value: ScheduleOption }[] = [
+  { label: "Inbox", value: "inbox" },
+  { label: "Today", value: "today" },
+  { label: "Tomorrow", value: "tomorrow" },
+  { label: "Soon", value: "soon" },
+  { label: "Someday", value: "someday" },
+];
+
+function toTaskSchedule(option: ScheduleOption): TaskSchedule {
+  if (option === "today" || option === "tomorrow") {
+    const date = new Date();
+
+    if (option === "tomorrow") {
+      date.setDate(date.getDate() + 1);
+    }
+
+    return { type: "date", date: toLocalDateString(date) };
+  }
+
+  return { type: option };
+}
+
+function schedulesMatch(left: TaskSchedule, right: TaskSchedule): boolean {
+  if (left.type !== right.type) return false;
+
+  return (
+    left.type !== "date" ||
+    (right.type === "date" && left.date === right.date)
+  );
+}
 
 export default function TaskDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,12 +62,14 @@ export default function TaskDetailsScreen() {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
   const [focusedField, setFocusedField] = useState<
     "title" | "description" | null
   >(null);
   const descriptionInputRef = useRef<TextInput>(null);
   const titleSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const descriptionSavePromiseRef = useRef<Promise<boolean> | null>(null);
+  const scheduleSavePromiseRef = useRef<Promise<Task> | null>(null);
   const titleDraftRef = useRef("");
   const descriptionDraftRef = useRef("");
   const savedTitleRef = useRef("");
@@ -166,7 +206,7 @@ export default function TaskDetailsScreen() {
   }
 
   async function handleDone() {
-    if (saving) return;
+    if (saving || scheduleSavePromiseRef.current) return;
 
     if (!titleDraftRef.current.trim()) {
       Alert.alert("Title required", "Task title cannot be empty.");
@@ -188,6 +228,43 @@ export default function TaskDetailsScreen() {
     }
   }
 
+  function selectSchedule(option: ScheduleOption) {
+    if (!task || saving || scheduleSavePromiseRef.current) return;
+
+    const nextSchedule = toTaskSchedule(option);
+
+    if (schedulesMatch(task.schedule, nextSchedule)) {
+      return;
+    }
+
+    setScheduleSaving(true);
+
+    const savePromise = createTaskRepository(db).updateTaskSchedule(
+      task.id,
+      nextSchedule,
+    );
+
+    scheduleSavePromiseRef.current = savePromise;
+
+    void savePromise
+      .then((updatedTask) => {
+        setTask(updatedTask);
+      })
+      .catch((error) => {
+        console.error("Failed to update task schedule", error);
+        Alert.alert(
+          "Couldn't update schedule",
+          "The schedule wasn't changed. Please try again.",
+        );
+      })
+      .finally(() => {
+        scheduleSavePromiseRef.current = null;
+        setScheduleSaving(false);
+      });
+  }
+
+  const isBusy = saving || scheduleSaving;
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View className="flex-1 bg-white px-5 pt-6">
@@ -196,11 +273,12 @@ export default function TaskDetailsScreen() {
 
           <Pressable
             onPress={() => void handleDone()}
-            disabled={saving}
+            disabled={isBusy}
             accessibilityRole="button"
+            accessibilityState={{ disabled: isBusy }}
           >
             <Text className="text-blue-600">
-              {saving ? "Saving..." : "Done"}
+              {isBusy ? "Saving..." : "Done"}
             </Text>
           </Pressable>
         </View>
@@ -208,7 +286,11 @@ export default function TaskDetailsScreen() {
         {loading ? (
           <ActivityIndicator />
         ) : task ? (
-          <View className="gap-5">
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerClassName="gap-5 pb-8"
+          >
             <View className="gap-1.5">
               <Text className="ml-1 text-xs font-medium text-zinc-500">
                 Title
@@ -226,7 +308,7 @@ export default function TaskDetailsScreen() {
                   void saveTitle();
                 }}
                 onSubmitEditing={() => descriptionInputRef.current?.focus()}
-                editable={!saving}
+                editable={!isBusy}
                 placeholder="Task title"
                 placeholderTextColor="#a1a1aa"
                 returnKeyType="next"
@@ -257,7 +339,7 @@ export default function TaskDetailsScreen() {
                   setFocusedField(null);
                   void saveDescription();
                 }}
-                editable={!saving}
+                editable={!isBusy}
                 placeholder="Add description..."
                 placeholderTextColor="#a1a1aa"
                 selectionColor="#18181b"
@@ -269,7 +351,64 @@ export default function TaskDetailsScreen() {
                 }`}
               />
             </View>
-          </View>
+
+            <View className="gap-1.5">
+              <View className="ml-1 flex-row items-center justify-between">
+                <Text className="text-xs font-medium text-zinc-500">
+                  Schedule
+                </Text>
+                <Text className="text-xs font-medium text-zinc-500">
+                  {formatTaskSchedule(task.schedule)}
+                </Text>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                className="h-8 flex-none"
+                contentContainerClassName="items-center gap-1.5 pr-2"
+              >
+                {scheduleOptions.map((option) => {
+                  const isSelected = schedulesMatch(
+                    task.schedule,
+                    toTaskSchedule(option.value),
+                  );
+
+                  return (
+                    <Pressable
+                      key={option.value}
+                      accessibilityRole="button"
+                      accessibilityState={{
+                        selected: isSelected,
+                        disabled: isBusy,
+                      }}
+                      disabled={isBusy}
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        selectSchedule(option.value);
+                      }}
+                      className={`${
+                        isSelected
+                          ? "rounded-full bg-zinc-950 px-3 py-1.5"
+                          : "rounded-full border border-zinc-300 bg-white px-3 py-1.5 active:bg-zinc-100"
+                      } ${isBusy ? "opacity-40" : ""}`}
+                    >
+                      <Text
+                        className={
+                          isSelected
+                            ? "text-xs font-semibold text-white"
+                            : "text-xs font-medium text-zinc-600"
+                        }
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </ScrollView>
         ) : (
           <Text className="text-zinc-500">Task not found</Text>
         )}
