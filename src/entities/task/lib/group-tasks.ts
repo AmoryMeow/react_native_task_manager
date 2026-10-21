@@ -30,7 +30,7 @@ export function groupTasks(tasks: Task[], today = new Date()): TaskGroup[] {
   const groups: TaskGroup[] = [
     { id: "earlier", title: "Earlier", data: [] },
     { id: "today", title: "Today", data: [] },
-    { id: "upcoming", title: "Upcoming", data: [] },
+    { id: "upcoming", title: "Scheduled", data: [] },
     { id: "soon", title: "Soon", data: [] },
     { id: "someday", title: "Someday", data: [] },
     { id: "inbox", title: "Inbox", data: [] },
