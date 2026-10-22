@@ -1,7 +1,12 @@
 import DateTimePicker, {
   DateTimePickerAndroid,
 } from "@react-native-community/datetimepicker";
-import { router, Stack, useLocalSearchParams } from "expo-router";
+import {
+  router,
+  Stack,
+  useLocalSearchParams,
+  useNavigation,
+} from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -175,12 +180,16 @@ function InlineDatePicker({
 export default function TaskDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useSQLiteContext();
+  const navigation = useNavigation();
 
   const [task, setTask] = useState<Task | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [hasUnsavedTextChanges, setHasUnsavedTextChanges] = useState(false);
+  const [titleSaving, setTitleSaving] = useState(false);
+  const [descriptionSaving, setDescriptionSaving] = useState(false);
   const [completionSaving, setCompletionSaving] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [deadlineSaving, setDeadlineSaving] = useState(false);
@@ -198,6 +207,8 @@ export default function TaskDetailsScreen() {
   const completionSavePromiseRef = useRef<Promise<Task> | null>(null);
   const scheduleSavePromiseRef = useRef<Promise<Task> | null>(null);
   const deadlineSavePromiseRef = useRef<Promise<Task> | null>(null);
+  const closePromiseRef = useRef<Promise<void> | null>(null);
+  const allowRemovalRef = useRef(false);
   const lastScheduleDateRef = useRef(new Date());
   const titleDraftRef = useRef("");
   const descriptionDraftRef = useRef("");
@@ -229,6 +240,7 @@ export default function TaskDetailsScreen() {
           descriptionDraftRef.current = loadedDescription;
           savedTitleRef.current = loadedTitle;
           savedDescriptionRef.current = loadedDescription;
+          setHasUnsavedTextChanges(false);
         }
       } catch (error) {
         console.error("Failed to load task", error);
@@ -246,6 +258,13 @@ export default function TaskDetailsScreen() {
     };
   }, [db, id]);
 
+  function updateUnsavedTextState() {
+    setHasUnsavedTextChanges(
+      titleDraftRef.current.trim() !== savedTitleRef.current ||
+        descriptionDraftRef.current !== savedDescriptionRef.current,
+    );
+  }
+
   function saveTitle(): Promise<boolean> {
     if (titleSavePromiseRef.current) {
       return titleSavePromiseRef.current.then((saved) =>
@@ -262,13 +281,17 @@ export default function TaskDetailsScreen() {
     if (trimmedTitle === savedTitleRef.current) {
       titleDraftRef.current = trimmedTitle;
       setTitle(trimmedTitle);
+      updateUnsavedTextState();
       return Promise.resolve(true);
     }
+
+    setTitleSaving(true);
 
     const savePromise = createTaskRepository(db)
       .updateTaskTitle(task, trimmedTitle)
       .then((updatedTask) => {
         savedTitleRef.current = updatedTask.title;
+        updateUnsavedTextState();
         if (titleDraftRef.current.trim() === updatedTask.title) {
           titleDraftRef.current = updatedTask.title;
           setTitle(updatedTask.title);
@@ -290,6 +313,7 @@ export default function TaskDetailsScreen() {
       })
       .finally(() => {
         titleSavePromiseRef.current = null;
+        setTitleSaving(false);
       });
 
     titleSavePromiseRef.current = savePromise;
@@ -307,11 +331,14 @@ export default function TaskDetailsScreen() {
       return Promise.resolve(true);
     }
 
+    setDescriptionSaving(true);
+
     const nextDescription = descriptionDraftRef.current;
     const savePromise = createTaskRepository(db)
       .updateTaskDescription(task.id, nextDescription)
       .then(() => {
         savedDescriptionRef.current = nextDescription;
+        updateUnsavedTextState();
         setTask((current) =>
           current ? { ...current, description: nextDescription } : current,
         );
@@ -323,6 +350,7 @@ export default function TaskDetailsScreen() {
       })
       .finally(() => {
         descriptionSavePromiseRef.current = null;
+        setDescriptionSaving(false);
       });
 
     descriptionSavePromiseRef.current = savePromise;
@@ -340,34 +368,52 @@ export default function TaskDetailsScreen() {
     return titleSaved && descriptionSaved;
   }
 
-  async function handleDone() {
-    if (
-      saving ||
-      completionSavePromiseRef.current ||
-      scheduleSavePromiseRef.current ||
-      deadlineSavePromiseRef.current
-    ) {
-      return;
-    }
+  async function saveAndDismiss(dismiss: () => void) {
+    if (closePromiseRef.current) return closePromiseRef.current;
 
     if (!titleDraftRef.current.trim()) {
       Alert.alert("Title required", "Task title cannot be empty.");
       return;
     }
 
+    Keyboard.dismiss();
     setSaving(true);
 
-    const saved = await saveChanges();
+    const closePromise = (async () => {
+      const pendingWrites = [
+        completionSavePromiseRef.current,
+        scheduleSavePromiseRef.current,
+        deadlineSavePromiseRef.current,
+      ].filter((promise): promise is Promise<Task> => promise !== null);
+      const pendingResults = await Promise.allSettled(pendingWrites);
 
-    if (saved) {
-      router.back();
-    } else {
+      if (pendingResults.some((result) => result.status === "rejected")) {
+        return;
+      }
+
+      const saved = await saveChanges();
+
+      if (!saved) {
+        Alert.alert(
+          "Couldn't save",
+          "Your changes weren't saved. Please try again.",
+        );
+        return;
+      }
+
+      allowRemovalRef.current = true;
+      dismiss();
+    })().finally(() => {
+      closePromiseRef.current = null;
       setSaving(false);
-      Alert.alert(
-        "Couldn't save",
-        "Your changes weren't saved. Please try again.",
-      );
-    }
+    });
+
+    closePromiseRef.current = closePromise;
+    return closePromise;
+  }
+
+  function handleDone() {
+    void saveAndDismiss(() => router.back());
   }
 
   function toggleCompletion() {
@@ -548,9 +594,26 @@ export default function TaskDetailsScreen() {
   }
 
   const isBusy = saving || completionSaving || scheduleSaving || deadlineSaving;
+  const shouldPreventDismiss =
+    hasUnsavedTextChanges ||
+    titleSaving ||
+    descriptionSaving ||
+    completionSaving ||
+    scheduleSaving ||
+    deadlineSaving ||
+    saving;
   const showScheduleDeadlineWarning = task
     ? isScheduledAfterDeadline(task)
     : false;
+
+  useEffect(() => {
+    return navigation.addListener("beforeRemove", (event) => {
+      if (allowRemovalRef.current || !shouldPreventDismiss) return;
+
+      event.preventDefault();
+      void saveAndDismiss(() => navigation.dispatch(event.data.action));
+    });
+  });
 
   return (
     <>
@@ -559,6 +622,7 @@ export default function TaskDetailsScreen() {
           sheetAllowedDetents: activeDatePicker
             ? EXPANDED_SHEET_DETENTS
             : DEFAULT_SHEET_DETENTS,
+          gestureEnabled: !shouldPreventDismiss,
         }}
       />
 
@@ -568,7 +632,7 @@ export default function TaskDetailsScreen() {
             <Text className="text-lg font-semibold">Task details</Text>
 
             <Pressable
-              onPress={() => void handleDone()}
+              onPress={handleDone}
               disabled={isBusy}
               accessibilityRole="button"
               accessibilityState={{ disabled: isBusy }}
@@ -627,6 +691,11 @@ export default function TaskDetailsScreen() {
                     onChangeText={(value) => {
                       titleDraftRef.current = value;
                       setTitle(value);
+                      setHasUnsavedTextChanges(
+                        value.trim() !== savedTitleRef.current ||
+                          descriptionDraftRef.current !==
+                            savedDescriptionRef.current,
+                      );
                     }}
                     onFocus={() => setFocusedField("title")}
                     onBlur={() => {
@@ -664,6 +733,10 @@ export default function TaskDetailsScreen() {
                   onChangeText={(value) => {
                     descriptionDraftRef.current = value;
                     setDescription(value);
+                    setHasUnsavedTextChanges(
+                      titleDraftRef.current.trim() !== savedTitleRef.current ||
+                        value !== savedDescriptionRef.current,
+                    );
                   }}
                   onFocus={() => setFocusedField("description")}
                   onBlur={() => {
