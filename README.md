@@ -36,11 +36,12 @@ first and organized with as much—or as little—detail as needed.
 - Edit titles directly in the list, or open task details to edit the title,
   description, and schedule.
 - Assign Today, Tomorrow, or any calendar date with local-date handling.
-- Add, edit, or clear an optional deadline without changing the task schedule.
+- Add, edit, or clear an optional deadline without changing the task schedule;
+  a subtle warning highlights plans scheduled after their deadline.
 - Drag tasks between Today, Soon, Someday, and Inbox. Moving a completed task
   back into an active group reopens it.
-- Complete tasks, delete them with an Undo option, and keep all data locally in
-  SQLite.
+- Complete or reopen tasks from the list or task details, delete them with an
+  Undo option, and keep all data locally in SQLite.
 
 ## Planned features
 

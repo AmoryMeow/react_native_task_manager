@@ -83,6 +83,17 @@ function schedulesMatch(left: TaskSchedule, right: TaskSchedule): boolean {
   );
 }
 
+function isScheduledAfterDeadline(task: Task): boolean {
+  if (task.status === "done" || task.schedule.type !== "date" || !task.dueAt) {
+    return false;
+  }
+
+  return (
+    parseLocalDate(task.schedule.date).getTime() >
+    parseLocalDate(task.dueAt).getTime()
+  );
+}
+
 interface InlineDatePickerProps {
   draftDate: Date;
   isSaving: boolean;
@@ -170,6 +181,7 @@ export default function TaskDetailsScreen() {
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [completionSaving, setCompletionSaving] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [deadlineSaving, setDeadlineSaving] = useState(false);
   const [scheduleExpanded, setScheduleExpanded] = useState(false);
@@ -183,6 +195,7 @@ export default function TaskDetailsScreen() {
   const descriptionInputRef = useRef<TextInput>(null);
   const titleSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const descriptionSavePromiseRef = useRef<Promise<boolean> | null>(null);
+  const completionSavePromiseRef = useRef<Promise<Task> | null>(null);
   const scheduleSavePromiseRef = useRef<Promise<Task> | null>(null);
   const deadlineSavePromiseRef = useRef<Promise<Task> | null>(null);
   const lastScheduleDateRef = useRef(new Date());
@@ -330,6 +343,7 @@ export default function TaskDetailsScreen() {
   async function handleDone() {
     if (
       saving ||
+      completionSavePromiseRef.current ||
       scheduleSavePromiseRef.current ||
       deadlineSavePromiseRef.current
     ) {
@@ -354,6 +368,40 @@ export default function TaskDetailsScreen() {
         "Your changes weren't saved. Please try again.",
       );
     }
+  }
+
+  function toggleCompletion() {
+    if (!task || isBusy || completionSavePromiseRef.current) return;
+
+    setCompletionSaving(true);
+
+    const savePromise = createTaskRepository(db).toggleTask(task);
+    completionSavePromiseRef.current = savePromise;
+
+    void savePromise
+      .then((updatedTask) => {
+        setTask((current) =>
+          current
+            ? {
+                ...current,
+                status: updatedTask.status,
+                completedAt: updatedTask.completedAt,
+                updatedAt: updatedTask.updatedAt,
+              }
+            : current,
+        );
+      })
+      .catch((error) => {
+        console.error("Failed to update task completion", error);
+        Alert.alert(
+          "Couldn't update task",
+          "The completion status wasn't changed. Please try again.",
+        );
+      })
+      .finally(() => {
+        completionSavePromiseRef.current = null;
+        setCompletionSaving(false);
+      });
   }
 
   function collapseScheduleControls() {
@@ -499,7 +547,10 @@ export default function TaskDetailsScreen() {
     }
   }
 
-  const isBusy = saving || scheduleSaving || deadlineSaving;
+  const isBusy = saving || completionSaving || scheduleSaving || deadlineSaving;
+  const showScheduleDeadlineWarning = task
+    ? isScheduledAfterDeadline(task)
+    : false;
 
   return (
     <>
@@ -541,30 +592,64 @@ export default function TaskDetailsScreen() {
                 <Text className="ml-1 text-xs font-medium text-zinc-500">
                   Title
                 </Text>
-                <TextInput
-                  accessibilityLabel="Task title"
-                  value={title}
-                  onChangeText={(value) => {
-                    titleDraftRef.current = value;
-                    setTitle(value);
-                  }}
-                  onFocus={() => setFocusedField("title")}
-                  onBlur={() => {
-                    setFocusedField(null);
-                    void saveTitle();
-                  }}
-                  onSubmitEditing={() => descriptionInputRef.current?.focus()}
-                  editable={!isBusy}
-                  placeholder="Task title"
-                  placeholderTextColor="#a1a1aa"
-                  returnKeyType="next"
-                  selectionColor="#18181b"
-                  className={`min-h-12 rounded-xl border bg-zinc-50 px-3.5 py-2.5 text-lg font-semibold text-zinc-950 ${
-                    focusedField === "title"
-                      ? "border-zinc-500"
-                      : "border-zinc-200"
-                  }`}
-                />
+                <View className="flex-row items-center gap-2">
+                  <Pressable
+                    accessibilityRole="checkbox"
+                    accessibilityLabel={
+                      task.status === "done"
+                        ? "Mark task as incomplete"
+                        : "Mark task as completed"
+                    }
+                    accessibilityState={{
+                      checked: task.status === "done",
+                      disabled: isBusy,
+                    }}
+                    disabled={isBusy}
+                    onPress={toggleCompletion}
+                    className="h-12 w-10 items-center justify-center rounded-xl active:bg-zinc-100"
+                  >
+                    <View
+                      className={
+                        task.status === "done"
+                          ? "h-5 w-5 items-center justify-center rounded-md bg-zinc-950"
+                          : "h-5 w-5 rounded-md border-2 border-zinc-400"
+                      }
+                    >
+                      {task.status === "done" && (
+                        <Text className="text-xs font-bold text-white">✓</Text>
+                      )}
+                    </View>
+                  </Pressable>
+
+                  <TextInput
+                    accessibilityLabel="Task title"
+                    value={title}
+                    onChangeText={(value) => {
+                      titleDraftRef.current = value;
+                      setTitle(value);
+                    }}
+                    onFocus={() => setFocusedField("title")}
+                    onBlur={() => {
+                      setFocusedField(null);
+                      void saveTitle();
+                    }}
+                    onSubmitEditing={() => descriptionInputRef.current?.focus()}
+                    editable={!isBusy}
+                    placeholder="Task title"
+                    placeholderTextColor="#a1a1aa"
+                    returnKeyType="next"
+                    selectionColor="#18181b"
+                    className={`min-h-12 flex-1 rounded-xl border bg-zinc-50 px-3.5 py-2.5 text-lg font-semibold ${
+                      task.status === "done"
+                        ? "text-zinc-400 line-through"
+                        : "text-zinc-950"
+                    } ${
+                      focusedField === "title"
+                        ? "border-zinc-500"
+                        : "border-zinc-200"
+                    }`}
+                  />
+                </View>
               </View>
 
               <View className="gap-1.5">
@@ -789,6 +874,12 @@ export default function TaskDetailsScreen() {
                       }
                     />
                   </View>
+                )}
+
+                {showScheduleDeadlineWarning && (
+                  <Text className="px-2 pt-0.5 text-xs font-medium text-amber-700">
+                    Scheduled after deadline
+                  </Text>
                 )}
               </View>
             </ScrollView>
