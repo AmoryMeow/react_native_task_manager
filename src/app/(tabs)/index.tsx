@@ -423,7 +423,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-zinc-100">
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      className="flex-1 bg-zinc-100"
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
