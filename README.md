@@ -24,7 +24,8 @@ first and organized with as much—or as little—detail as needed.
   date describes intent, not failure.
 - **Schedule and Deadline are separate concepts.** Schedule answers “When do I
   intend to work on this?” A deadline answers “When must this be completed?”
-  Schedule editing is available now; deadline editing is planned.
+  Both can be edited independently, so changing a plan does not change the
+  actual constraint.
 
 ## Current features
 
@@ -35,6 +36,7 @@ first and organized with as much—or as little—detail as needed.
 - Edit titles directly in the list, or open task details to edit the title,
   description, and schedule.
 - Assign Today, Tomorrow, or any calendar date with local-date handling.
+- Add, edit, or clear an optional deadline without changing the task schedule.
 - Drag tasks between Today, Soon, Someday, and Inbox. Moving a completed task
   back into an active group reopens it.
 - Complete tasks, delete them with an Undo option, and keep all data locally in
@@ -48,8 +50,6 @@ first and organized with as much—or as little—detail as needed.
   list at once.
 - **Focus Mode** — provide a simpler workspace for one task with fewer
   distractions.
-- **Deadline editing** — record a real completion constraint independently of
-  the planned schedule.
 
 ## Tech stack
 

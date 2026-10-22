@@ -277,6 +277,47 @@ export function createTaskRepository(db: SQLiteDatabase) {
       };
     },
 
+    async updateTaskDeadline(
+      taskId: string,
+      dueAt: string | null,
+    ): Promise<Task> {
+      if (dueAt !== null && !isValidLocalDate(dueAt)) {
+        throw new Error("Task deadline must be a valid YYYY-MM-DD date");
+      }
+
+      const currentTask = await db.getFirstAsync<TaskRow>(
+        `SELECT * FROM tasks
+         WHERE id = ? AND deleted_at IS NULL`,
+        [taskId],
+      );
+
+      if (!currentTask) {
+        throw new Error(`Task ${taskId} was not found`);
+      }
+
+      if (currentTask.due_at === dueAt) {
+        return mapTask(currentTask);
+      }
+
+      const updatedAt = new Date().toISOString();
+      const result = await db.runAsync(
+        `UPDATE tasks
+         SET due_at = ?, updated_at = ?
+         WHERE id = ? AND deleted_at IS NULL`,
+        [dueAt, updatedAt, taskId],
+      );
+
+      if (result.changes === 0) {
+        throw new Error(`Task ${taskId} was not found`);
+      }
+
+      return {
+        ...mapTask(currentTask),
+        dueAt: dueAt ?? undefined,
+        updatedAt,
+      };
+    },
+
     async moveTaskToSchedule(
       taskId: string,
       schedule: TaskSchedule,

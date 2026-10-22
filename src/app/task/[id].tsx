@@ -17,12 +17,17 @@ import {
   View,
 } from "react-native";
 
-import { toLocalDateString } from "../../entities/task/lib/format-task-schedule";
+import {
+  formatTaskSchedule,
+  toLocalDateString,
+} from "../../entities/task/lib/format-task-schedule";
 import type { Task, TaskSchedule } from "../../entities/task/model/types";
 import { createTaskRepository } from "../../entities/task/repository/task-repository";
 import { CalendarIcon } from "../../shared/ui/icons/calendar-icon";
+import { ChevronIcon } from "../../shared/ui/icons/chevron-icon";
 
 type ScheduleOption = "inbox" | "today" | "tomorrow" | "soon" | "someday";
+type DatePickerTarget = "schedule" | "deadline";
 
 const scheduleOptions: { label: string; value: ScheduleOption }[] = [
   { label: "Inbox", value: "inbox" },
@@ -49,21 +54,25 @@ function toTaskSchedule(option: ScheduleOption): TaskSchedule {
   return { type: option };
 }
 
-function toLocalDate(schedule: TaskSchedule): Date {
-  if (schedule.type !== "date") return new Date();
-
-  const [year, month, day] = schedule.date.split("-").map(Number);
+function parseLocalDate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
 
-function formatSelectedDate(schedule: TaskSchedule): string {
-  if (schedule.type !== "date") return "Not set";
+function formatDate(value: Date | string): string {
+  const date = typeof value === "string" ? parseLocalDate(value) : value;
 
-  return toLocalDate(schedule).toLocaleDateString("en-US", {
+  return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatScheduleValue(schedule: TaskSchedule): string {
+  return schedule.type === "date"
+    ? formatDate(schedule.date)
+    : formatTaskSchedule(schedule);
 }
 
 function schedulesMatch(left: TaskSchedule, right: TaskSchedule): boolean {
@@ -71,6 +80,84 @@ function schedulesMatch(left: TaskSchedule, right: TaskSchedule): boolean {
 
   return (
     left.type !== "date" || (right.type === "date" && left.date === right.date)
+  );
+}
+
+interface InlineDatePickerProps {
+  draftDate: Date;
+  isSaving: boolean;
+  onApply: () => void;
+  onCancel: () => void;
+  onChange: (date: Date) => void;
+  onClear?: () => void;
+}
+
+function InlineDatePicker({
+  draftDate,
+  isSaving,
+  onApply,
+  onCancel,
+  onChange,
+  onClear,
+}: InlineDatePickerProps) {
+  return (
+    <View className="mt-2 rounded-xl border border-zinc-200 bg-zinc-50 p-2.5">
+      {Platform.OS === "ios" && (
+        <DateTimePicker
+          value={draftDate}
+          mode="date"
+          display="inline"
+          onValueChange={(_event, selectedDate) => onChange(selectedDate)}
+          accentColor="#18181b"
+          themeVariant="light"
+          style={{ height: 320, width: "100%" }}
+        />
+      )}
+
+      <View className="border-t border-zinc-200 pt-2.5">
+        <Text className="text-sm font-medium text-zinc-600">
+          {formatDate(draftDate)}
+        </Text>
+
+        <View className="mt-1 flex-row items-center justify-end gap-1">
+          {onClear && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Clear deadline"
+              disabled={isSaving}
+              onPress={onClear}
+              className="rounded-lg px-3 py-2 active:bg-zinc-200"
+            >
+              <Text className="text-sm font-medium text-zinc-500">Clear</Text>
+            </Pressable>
+          )}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cancel date selection"
+            disabled={isSaving}
+            onPress={onCancel}
+            className="rounded-lg px-3 py-2 active:bg-zinc-200"
+          >
+            <Text className="text-sm font-medium text-zinc-600">Cancel</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Apply selected date"
+            disabled={isSaving}
+            onPress={onApply}
+            className={`rounded-lg bg-zinc-950 px-3 py-2 active:bg-zinc-700 ${
+              isSaving ? "opacity-40" : ""
+            }`}
+          >
+            <Text className="text-sm font-semibold text-white">
+              {isSaving ? "Saving..." : "Apply"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -84,8 +171,11 @@ export default function TaskDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
-  const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [draftScheduleDate, setDraftScheduleDate] = useState(() => new Date());
+  const [deadlineSaving, setDeadlineSaving] = useState(false);
+  const [scheduleExpanded, setScheduleExpanded] = useState(false);
+  const [activeDatePicker, setActiveDatePicker] =
+    useState<DatePickerTarget | null>(null);
+  const [draftDate, setDraftDate] = useState(() => new Date());
   const [focusedField, setFocusedField] = useState<
     "title" | "description" | null
   >(null);
@@ -94,6 +184,8 @@ export default function TaskDetailsScreen() {
   const titleSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const descriptionSavePromiseRef = useRef<Promise<boolean> | null>(null);
   const scheduleSavePromiseRef = useRef<Promise<Task> | null>(null);
+  const deadlineSavePromiseRef = useRef<Promise<Task> | null>(null);
+  const lastScheduleDateRef = useRef(new Date());
   const titleDraftRef = useRef("");
   const descriptionDraftRef = useRef("");
   const savedTitleRef = useRef("");
@@ -113,7 +205,9 @@ export default function TaskDetailsScreen() {
           const loadedDescription = result?.description ?? "";
 
           if (result?.schedule.type === "date") {
-            setDraftScheduleDate(toLocalDate(result.schedule));
+            const scheduleDate = parseLocalDate(result.schedule.date);
+            lastScheduleDateRef.current = scheduleDate;
+            setDraftDate(scheduleDate);
           }
 
           setTitle(loadedTitle);
@@ -234,7 +328,13 @@ export default function TaskDetailsScreen() {
   }
 
   async function handleDone() {
-    if (saving || scheduleSavePromiseRef.current) return;
+    if (
+      saving ||
+      scheduleSavePromiseRef.current ||
+      deadlineSavePromiseRef.current
+    ) {
+      return;
+    }
 
     if (!titleDraftRef.current.trim()) {
       Alert.alert("Title required", "Task title cannot be empty.");
@@ -256,14 +356,16 @@ export default function TaskDetailsScreen() {
     }
   }
 
-  function saveSchedule(
-    nextSchedule: TaskSchedule,
-    closeDatePickerAfterSave = false,
-  ) {
-    if (!task || saving || scheduleSavePromiseRef.current) return;
+  function collapseScheduleControls() {
+    setScheduleExpanded(false);
+    setActiveDatePicker((current) => (current === "schedule" ? null : current));
+  }
+
+  function saveSchedule(nextSchedule: TaskSchedule) {
+    if (!task || isBusy || scheduleSavePromiseRef.current) return;
 
     if (schedulesMatch(task.schedule, nextSchedule)) {
-      if (closeDatePickerAfterSave) setDatePickerOpen(false);
+      collapseScheduleControls();
       return;
     }
 
@@ -281,10 +383,12 @@ export default function TaskDetailsScreen() {
         setTask(updatedTask);
 
         if (updatedTask.schedule.type === "date") {
-          setDraftScheduleDate(toLocalDate(updatedTask.schedule));
+          lastScheduleDateRef.current = parseLocalDate(
+            updatedTask.schedule.date,
+          );
         }
 
-        if (closeDatePickerAfterSave) setDatePickerOpen(false);
+        collapseScheduleControls();
       })
       .catch((error) => {
         console.error("Failed to update task schedule", error);
@@ -299,14 +403,66 @@ export default function TaskDetailsScreen() {
       });
   }
 
-  function openDatePicker() {
-    if (!task || isBusy || (datePickerOpen && Platform.OS === "ios")) return;
+  function saveDeadline(dueAt: string | null) {
+    if (!task || isBusy || deadlineSavePromiseRef.current) return;
 
-    const initialDate = draftScheduleDate;
+    if ((task.dueAt ?? null) === dueAt) {
+      setActiveDatePicker(null);
+      return;
+    }
+
+    setDeadlineSaving(true);
+
+    const savePromise = createTaskRepository(db).updateTaskDeadline(
+      task.id,
+      dueAt,
+    );
+
+    deadlineSavePromiseRef.current = savePromise;
+
+    void savePromise
+      .then((updatedTask) => {
+        setTask(updatedTask);
+        setActiveDatePicker(null);
+      })
+      .catch((error) => {
+        console.error("Failed to update task deadline", error);
+        Alert.alert(
+          "Couldn't update deadline",
+          "The deadline wasn't changed. Please try again.",
+        );
+      })
+      .finally(() => {
+        deadlineSavePromiseRef.current = null;
+        setDeadlineSaving(false);
+      });
+  }
+
+  function updateDraftDate(date: Date, target = activeDatePicker) {
+    setDraftDate(date);
+
+    if (target === "schedule") {
+      lastScheduleDateRef.current = date;
+    }
+  }
+
+  function openDatePicker(target: DatePickerTarget) {
+    if (!task || isBusy || activeDatePicker === target) return;
+
+    const initialDate =
+      target === "schedule"
+        ? lastScheduleDateRef.current
+        : task.dueAt
+          ? parseLocalDate(task.dueAt)
+          : new Date();
 
     Keyboard.dismiss();
-    setDraftScheduleDate(initialDate);
-    setDatePickerOpen(true);
+    setDraftDate(initialDate);
+    setActiveDatePicker(target);
+
+    if (target === "deadline") {
+      setScheduleExpanded(false);
+    }
 
     if (Platform.OS === "android") {
       DateTimePickerAndroid.open({
@@ -314,32 +470,42 @@ export default function TaskDetailsScreen() {
         mode: "date",
         display: "calendar",
         onValueChange: (_event, selectedDate) => {
-          setDraftScheduleDate(selectedDate);
+          updateDraftDate(selectedDate, target);
         },
-        onDismiss: () => setDatePickerOpen(false),
+        onDismiss: () => setActiveDatePicker(null),
       });
     }
   }
 
   function selectSchedule(option: ScheduleOption) {
-    setDatePickerOpen(false);
     saveSchedule(toTaskSchedule(option));
   }
 
-  function applyPickedDate() {
-    saveSchedule(
-      { type: "date", date: toLocalDateString(draftScheduleDate) },
-      true,
-    );
+  function toggleDeadlinePicker() {
+    if (activeDatePicker === "deadline") {
+      setActiveDatePicker(null);
+    } else {
+      openDatePicker("deadline");
+    }
   }
 
-  const isBusy = saving || scheduleSaving;
+  function applyPickedDate() {
+    const date = toLocalDateString(draftDate);
+
+    if (activeDatePicker === "schedule") {
+      saveSchedule({ type: "date", date });
+    } else if (activeDatePicker === "deadline") {
+      saveDeadline(date);
+    }
+  }
+
+  const isBusy = saving || scheduleSaving || deadlineSaving;
 
   return (
     <>
       <Stack.Screen
         options={{
-          sheetAllowedDetents: datePickerOpen
+          sheetAllowedDetents: activeDatePicker
             ? EXPANDED_SHEET_DETENTS
             : DEFAULT_SHEET_DETENTS,
         }}
@@ -432,141 +598,196 @@ export default function TaskDetailsScreen() {
                 />
               </View>
 
-              <View className="gap-1.5">
-                <Text className="ml-1 text-xs font-medium text-zinc-500">
-                  Schedule
-                </Text>
-
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  className="h-8 flex-none"
-                  contentContainerClassName="items-center gap-1.5 pr-2"
-                >
-                  {scheduleOptions.map((option) => {
-                    const isSelected = schedulesMatch(
-                      task.schedule,
-                      toTaskSchedule(option.value),
-                    );
-
-                    return (
-                      <Pressable
-                        key={option.value}
-                        accessibilityRole="button"
-                        accessibilityState={{
-                          selected: isSelected,
-                          disabled: isBusy,
-                        }}
-                        disabled={isBusy}
-                        onPress={() => {
-                          Keyboard.dismiss();
-                          selectSchedule(option.value);
-                        }}
-                        className={`${
-                          isSelected
-                            ? "rounded-full bg-zinc-950 px-3 py-1.5"
-                            : "rounded-full border border-zinc-300 bg-white px-3 py-1.5 active:bg-zinc-100"
-                        } ${isBusy ? "opacity-40" : ""}`}
-                      >
-                        <Text
-                          className={
-                            isSelected
-                              ? "text-xs font-semibold text-white"
-                              : "text-xs font-medium text-zinc-600"
-                          }
-                        >
-                          {option.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-
+              <View className="gap-2">
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Choose a date, ${formatSelectedDate(task.schedule)}`}
+                  accessibilityLabel={`Schedule, ${formatScheduleValue(task.schedule)}`}
                   accessibilityState={{
                     disabled: isBusy,
-                    expanded: datePickerOpen,
+                    expanded: scheduleExpanded,
                   }}
                   disabled={isBusy}
-                  onPress={openDatePicker}
-                  className={`mt-1 h-12 flex-row items-center justify-between rounded-xl border px-3.5 ${
-                    datePickerOpen
-                      ? "border-zinc-500 bg-zinc-50"
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setActiveDatePicker(null);
+                    setScheduleExpanded((current) => !current);
+                  }}
+                  className={`h-12 flex-row items-center justify-between rounded-xl border px-3.5 ${
+                    scheduleExpanded
+                      ? "border-zinc-400 bg-zinc-50"
                       : "border-zinc-200 bg-white active:bg-zinc-50"
                   } ${isBusy ? "opacity-40" : ""}`}
                 >
                   <View className="flex-row items-center gap-2.5">
                     <CalendarIcon />
                     <Text className="text-sm font-medium text-zinc-800">
-                      Choose a date
+                      Schedule
                     </Text>
                   </View>
 
-                  <Text
-                    numberOfLines={1}
-                    className="ml-3 flex-shrink text-sm text-zinc-500"
-                  >
-                    {formatSelectedDate(task.schedule)}
-                  </Text>
+                  <View className="ml-3 flex-row items-center gap-2">
+                    <Text
+                      numberOfLines={1}
+                      className="flex-shrink text-sm text-zinc-500"
+                    >
+                      {formatScheduleValue(task.schedule)}
+                    </Text>
+                    <ChevronIcon direction={scheduleExpanded ? "up" : "down"} />
+                  </View>
                 </Pressable>
 
-                {datePickerOpen && (
+                {scheduleExpanded && (
+                  <View className="gap-2 rounded-xl bg-zinc-50 p-2.5">
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                      className="h-8 flex-none"
+                      contentContainerClassName="items-center gap-1.5 pr-2"
+                    >
+                      {scheduleOptions.map((option) => {
+                        const isSelected = schedulesMatch(
+                          task.schedule,
+                          toTaskSchedule(option.value),
+                        );
+
+                        return (
+                          <Pressable
+                            key={option.value}
+                            accessibilityRole="button"
+                            accessibilityState={{
+                              selected: isSelected,
+                              disabled: isBusy,
+                            }}
+                            disabled={isBusy}
+                            onPress={() => selectSchedule(option.value)}
+                            className={`${
+                              isSelected
+                                ? "rounded-full bg-zinc-950 px-3 py-1.5"
+                                : "rounded-full border border-zinc-300 bg-white px-3 py-1.5 active:bg-zinc-100"
+                            } ${isBusy ? "opacity-40" : ""}`}
+                          >
+                            <Text
+                              className={
+                                isSelected
+                                  ? "text-xs font-semibold text-white"
+                                  : "text-xs font-medium text-zinc-600"
+                              }
+                            >
+                              {option.label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Choose a schedule date"
+                      accessibilityState={{
+                        disabled: isBusy,
+                        expanded: activeDatePicker === "schedule",
+                      }}
+                      disabled={isBusy}
+                      onPress={() => openDatePicker("schedule")}
+                      className="h-10 flex-row items-center gap-2 rounded-lg px-2 active:bg-zinc-200"
+                    >
+                      <CalendarIcon size={15} />
+                      <Text className="text-sm font-medium text-zinc-700">
+                        Choose a date
+                      </Text>
+                    </Pressable>
+
+                    {activeDatePicker === "schedule" && (
+                      <View
+                        onLayout={() =>
+                          contentScrollRef.current?.scrollToEnd({
+                            animated: true,
+                          })
+                        }
+                      >
+                        <InlineDatePicker
+                          draftDate={draftDate}
+                          isSaving={scheduleSaving}
+                          onApply={applyPickedDate}
+                          onCancel={() => setActiveDatePicker(null)}
+                          onChange={updateDraftDate}
+                        />
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {task.dueAt ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Deadline, ${formatDate(task.dueAt)}`}
+                    accessibilityState={{
+                      disabled: isBusy,
+                      expanded: activeDatePicker === "deadline",
+                    }}
+                    disabled={isBusy}
+                    onPress={toggleDeadlinePicker}
+                    className={`h-12 flex-row items-center justify-between rounded-xl border px-3.5 ${
+                      activeDatePicker === "deadline"
+                        ? "border-zinc-400 bg-zinc-50"
+                        : "border-zinc-200 bg-white active:bg-zinc-50"
+                    } ${isBusy ? "opacity-40" : ""}`}
+                  >
+                    <View className="flex-row items-center gap-2.5">
+                      <CalendarIcon />
+                      <Text className="text-sm font-medium text-zinc-800">
+                        Deadline
+                      </Text>
+                    </View>
+
+                    <View className="ml-3 flex-row items-center gap-2">
+                      <Text className="text-sm text-zinc-500">
+                        {formatDate(task.dueAt)}
+                      </Text>
+                      <ChevronIcon
+                        direction={
+                          activeDatePicker === "deadline" ? "up" : "down"
+                        }
+                      />
+                    </View>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add deadline"
+                    accessibilityState={{
+                      disabled: isBusy,
+                      expanded: activeDatePicker === "deadline",
+                    }}
+                    disabled={isBusy}
+                    onPress={toggleDeadlinePicker}
+                    className={`h-10 self-start justify-center rounded-lg px-2.5 active:bg-zinc-100 ${
+                      isBusy ? "opacity-40" : ""
+                    }`}
+                  >
+                    <Text className="text-sm font-medium text-zinc-500">
+                      + Add deadline
+                    </Text>
+                  </Pressable>
+                )}
+
+                {activeDatePicker === "deadline" && (
                   <View
                     onLayout={() =>
                       contentScrollRef.current?.scrollToEnd({ animated: true })
                     }
-                    className="mt-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3"
                   >
-                    {Platform.OS === "ios" && (
-                      <DateTimePicker
-                        value={draftScheduleDate}
-                        mode="date"
-                        display="inline"
-                        onValueChange={(_event, selectedDate) =>
-                          setDraftScheduleDate(selectedDate)
-                        }
-                        accentColor="#18181b"
-                        themeVariant="light"
-                        style={{ height: 340, width: "100%" }}
-                      />
-                    )}
-
-                    <View className="mt-2 flex-row items-center justify-between border-t border-zinc-200 pt-3">
-                      <Text className="text-sm font-medium text-zinc-600">
-                        {draftScheduleDate.toLocaleDateString()}
-                      </Text>
-
-                      <View className="flex-row gap-2">
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Cancel date selection"
-                          disabled={isBusy}
-                          onPress={() => setDatePickerOpen(false)}
-                          className="rounded-lg px-3 py-2 active:bg-zinc-200"
-                        >
-                          <Text className="text-sm font-medium text-zinc-600">
-                            Cancel
-                          </Text>
-                        </Pressable>
-
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel="Apply selected date"
-                          disabled={isBusy}
-                          onPress={applyPickedDate}
-                          className={`rounded-lg bg-zinc-950 px-3 py-2 active:bg-zinc-700 ${
-                            isBusy ? "opacity-40" : ""
-                          }`}
-                        >
-                          <Text className="text-sm font-semibold text-white">
-                            {scheduleSaving ? "Saving..." : "Apply"}
-                          </Text>
-                        </Pressable>
-                      </View>
-                    </View>
+                    <InlineDatePicker
+                      draftDate={draftDate}
+                      isSaving={deadlineSaving}
+                      onApply={applyPickedDate}
+                      onCancel={() => setActiveDatePicker(null)}
+                      onChange={updateDraftDate}
+                      onClear={
+                        task.dueAt ? () => saveDeadline(null) : undefined
+                      }
+                    />
                   </View>
                 )}
               </View>
