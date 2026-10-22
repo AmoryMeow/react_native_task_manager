@@ -190,6 +190,10 @@ export default function TaskDetailsScreen() {
   const [hasUnsavedTextChanges, setHasUnsavedTextChanges] = useState(false);
   const [titleSaving, setTitleSaving] = useState(false);
   const [descriptionSaving, setDescriptionSaving] = useState(false);
+  const [titleSaveError, setTitleSaveError] = useState<string | null>(null);
+  const [descriptionSaveError, setDescriptionSaveError] = useState<
+    string | null
+  >(null);
   const [completionSaving, setCompletionSaving] = useState(false);
   const [scheduleSaving, setScheduleSaving] = useState(false);
   const [deadlineSaving, setDeadlineSaving] = useState(false);
@@ -209,11 +213,19 @@ export default function TaskDetailsScreen() {
   const deadlineSavePromiseRef = useRef<Promise<Task> | null>(null);
   const closePromiseRef = useRef<Promise<void> | null>(null);
   const allowRemovalRef = useRef(false);
-  const lastScheduleDateRef = useRef(new Date());
+  const isMountedRef = useRef(true);
   const titleDraftRef = useRef("");
   const descriptionDraftRef = useRef("");
   const savedTitleRef = useRef("");
   const savedDescriptionRef = useRef("");
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -227,12 +239,6 @@ export default function TaskDetailsScreen() {
           setTask(result);
           const loadedTitle = result?.title ?? "";
           const loadedDescription = result?.description ?? "";
-
-          if (result?.schedule.type === "date") {
-            const scheduleDate = parseLocalDate(result.schedule.date);
-            lastScheduleDateRef.current = scheduleDate;
-            setDraftDate(scheduleDate);
-          }
 
           setTitle(loadedTitle);
           setDescription(loadedDescription);
@@ -259,6 +265,8 @@ export default function TaskDetailsScreen() {
   }, [db, id]);
 
   function updateUnsavedTextState() {
+    if (!isMountedRef.current) return;
+
     setHasUnsavedTextChanges(
       titleDraftRef.current.trim() !== savedTitleRef.current ||
         descriptionDraftRef.current !== savedDescriptionRef.current,
@@ -267,54 +275,85 @@ export default function TaskDetailsScreen() {
 
   function saveTitle(): Promise<boolean> {
     if (titleSavePromiseRef.current) {
-      return titleSavePromiseRef.current.then((saved) =>
-        saved ? saveTitle() : false,
-      );
+      return titleSavePromiseRef.current;
     }
 
-    const trimmedTitle = titleDraftRef.current.trim();
-
-    if (!task || !trimmedTitle) {
+    if (!task || !titleDraftRef.current.trim()) {
       return Promise.resolve(false);
     }
 
-    if (trimmedTitle === savedTitleRef.current) {
-      titleDraftRef.current = trimmedTitle;
-      setTitle(trimmedTitle);
-      updateUnsavedTextState();
-      return Promise.resolve(true);
+    if (isMountedRef.current) {
+      setTitleSaving(true);
     }
 
-    setTitleSaving(true);
+    const savePromise = (async () => {
+      let followedFailedSave = false;
 
-    const savePromise = createTaskRepository(db)
-      .updateTaskTitle(task, trimmedTitle)
-      .then((updatedTask) => {
-        savedTitleRef.current = updatedTask.title;
-        updateUnsavedTextState();
-        if (titleDraftRef.current.trim() === updatedTask.title) {
-          titleDraftRef.current = updatedTask.title;
-          setTitle(updatedTask.title);
+      while (true) {
+        const titleToSave = titleDraftRef.current.trim();
+
+        if (!titleToSave) return false;
+
+        if (titleToSave === savedTitleRef.current) {
+          titleDraftRef.current = titleToSave;
+          if (isMountedRef.current) {
+            setTitle(titleToSave);
+            setTitleSaveError(null);
+          }
+          updateUnsavedTextState();
+          return true;
         }
-        setTask((current) =>
-          current
-            ? {
-                ...current,
-                title: updatedTask.title,
-                updatedAt: updatedTask.updatedAt,
-              }
-            : current,
-        );
-        return true;
-      })
-      .catch((error) => {
-        console.error("Failed to save task title", error);
-        return false;
-      })
-      .finally(() => {
-        titleSavePromiseRef.current = null;
+
+        try {
+          const updatedTask = await createTaskRepository(db).updateTaskTitle(
+            task,
+            titleToSave,
+          );
+
+          savedTitleRef.current = updatedTask.title;
+          if (isMountedRef.current) {
+            setTask((current) =>
+              current
+                ? {
+                    ...current,
+                    title: updatedTask.title,
+                    updatedAt: updatedTask.updatedAt,
+                  }
+                : current,
+            );
+          }
+
+          if (titleDraftRef.current.trim() === updatedTask.title) {
+            titleDraftRef.current = updatedTask.title;
+            if (isMountedRef.current) {
+              setTitle(updatedTask.title);
+              setTitleSaveError(null);
+            }
+            updateUnsavedTextState();
+            return true;
+          }
+        } catch (error) {
+          console.error("Failed to save task title", error);
+          if (isMountedRef.current) {
+            setTitleSaveError("Title wasn't saved.");
+          }
+
+          if (
+            followedFailedSave ||
+            titleDraftRef.current.trim() === titleToSave
+          ) {
+            return false;
+          }
+
+          followedFailedSave = true;
+        }
+      }
+    })().finally(() => {
+      titleSavePromiseRef.current = null;
+      if (isMountedRef.current) {
         setTitleSaving(false);
-      });
+      }
+    });
 
     titleSavePromiseRef.current = savePromise;
     return savePromise;
@@ -322,36 +361,73 @@ export default function TaskDetailsScreen() {
 
   function saveDescription(): Promise<boolean> {
     if (descriptionSavePromiseRef.current) {
-      return descriptionSavePromiseRef.current.then((saved) =>
-        saved ? saveDescription() : false,
-      );
+      return descriptionSavePromiseRef.current;
     }
 
-    if (!task || descriptionDraftRef.current === savedDescriptionRef.current) {
-      return Promise.resolve(true);
+    if (!task) return Promise.resolve(false);
+
+    if (isMountedRef.current) {
+      setDescriptionSaving(true);
     }
 
-    setDescriptionSaving(true);
+    const savePromise = (async () => {
+      let followedFailedSave = false;
 
-    const nextDescription = descriptionDraftRef.current;
-    const savePromise = createTaskRepository(db)
-      .updateTaskDescription(task.id, nextDescription)
-      .then(() => {
-        savedDescriptionRef.current = nextDescription;
-        updateUnsavedTextState();
-        setTask((current) =>
-          current ? { ...current, description: nextDescription } : current,
-        );
-        return true;
-      })
-      .catch((error) => {
-        console.error("Failed to save task description", error);
-        return false;
-      })
-      .finally(() => {
-        descriptionSavePromiseRef.current = null;
+      while (true) {
+        const descriptionToSave = descriptionDraftRef.current;
+
+        if (descriptionToSave === savedDescriptionRef.current) {
+          if (isMountedRef.current) {
+            setDescriptionSaveError(null);
+          }
+          updateUnsavedTextState();
+          return true;
+        }
+
+        try {
+          await createTaskRepository(db).updateTaskDescription(
+            task.id,
+            descriptionToSave,
+          );
+
+          savedDescriptionRef.current = descriptionToSave;
+          if (isMountedRef.current) {
+            setTask((current) =>
+              current
+                ? { ...current, description: descriptionToSave }
+                : current,
+            );
+          }
+
+          if (descriptionDraftRef.current === descriptionToSave) {
+            if (isMountedRef.current) {
+              setDescriptionSaveError(null);
+            }
+            updateUnsavedTextState();
+            return true;
+          }
+        } catch (error) {
+          console.error("Failed to save task description", error);
+          if (isMountedRef.current) {
+            setDescriptionSaveError("Description wasn't saved.");
+          }
+
+          if (
+            followedFailedSave ||
+            descriptionDraftRef.current === descriptionToSave
+          ) {
+            return false;
+          }
+
+          followedFailedSave = true;
+        }
+      }
+    })().finally(() => {
+      descriptionSavePromiseRef.current = null;
+      if (isMountedRef.current) {
         setDescriptionSaving(false);
-      });
+      }
+    });
 
     descriptionSavePromiseRef.current = savePromise;
     return savePromise;
@@ -394,18 +470,18 @@ export default function TaskDetailsScreen() {
       const saved = await saveChanges();
 
       if (!saved) {
-        Alert.alert(
-          "Couldn't save",
-          "Your changes weren't saved. Please try again.",
-        );
         return;
       }
+
+      if (!isMountedRef.current) return;
 
       allowRemovalRef.current = true;
       dismiss();
     })().finally(() => {
       closePromiseRef.current = null;
-      setSaving(false);
+      if (isMountedRef.current) {
+        setSaving(false);
+      }
     });
 
     closePromiseRef.current = closePromise;
@@ -426,6 +502,8 @@ export default function TaskDetailsScreen() {
 
     void savePromise
       .then((updatedTask) => {
+        if (!isMountedRef.current) return;
+
         setTask((current) =>
           current
             ? {
@@ -439,6 +517,8 @@ export default function TaskDetailsScreen() {
       })
       .catch((error) => {
         console.error("Failed to update task completion", error);
+        if (!isMountedRef.current) return;
+
         Alert.alert(
           "Couldn't update task",
           "The completion status wasn't changed. Please try again.",
@@ -446,11 +526,15 @@ export default function TaskDetailsScreen() {
       })
       .finally(() => {
         completionSavePromiseRef.current = null;
-        setCompletionSaving(false);
+        if (isMountedRef.current) {
+          setCompletionSaving(false);
+        }
       });
   }
 
   function collapseScheduleControls() {
+    if (!isMountedRef.current) return;
+
     setScheduleExpanded(false);
     setActiveDatePicker((current) => (current === "schedule" ? null : current));
   }
@@ -474,18 +558,24 @@ export default function TaskDetailsScreen() {
 
     void savePromise
       .then((updatedTask) => {
-        setTask(updatedTask);
+        if (!isMountedRef.current) return;
 
-        if (updatedTask.schedule.type === "date") {
-          lastScheduleDateRef.current = parseLocalDate(
-            updatedTask.schedule.date,
-          );
-        }
+        setTask((current) =>
+          current
+            ? {
+                ...current,
+                schedule: updatedTask.schedule,
+                updatedAt: updatedTask.updatedAt,
+              }
+            : current,
+        );
 
         collapseScheduleControls();
       })
       .catch((error) => {
         console.error("Failed to update task schedule", error);
+        if (!isMountedRef.current) return;
+
         Alert.alert(
           "Couldn't update schedule",
           "The schedule wasn't changed. Please try again.",
@@ -493,7 +583,9 @@ export default function TaskDetailsScreen() {
       })
       .finally(() => {
         scheduleSavePromiseRef.current = null;
-        setScheduleSaving(false);
+        if (isMountedRef.current) {
+          setScheduleSaving(false);
+        }
       });
   }
 
@@ -516,11 +608,23 @@ export default function TaskDetailsScreen() {
 
     void savePromise
       .then((updatedTask) => {
-        setTask(updatedTask);
+        if (!isMountedRef.current) return;
+
+        setTask((current) =>
+          current
+            ? {
+                ...current,
+                dueAt: updatedTask.dueAt,
+                updatedAt: updatedTask.updatedAt,
+              }
+            : current,
+        );
         setActiveDatePicker(null);
       })
       .catch((error) => {
         console.error("Failed to update task deadline", error);
+        if (!isMountedRef.current) return;
+
         Alert.alert(
           "Couldn't update deadline",
           "The deadline wasn't changed. Please try again.",
@@ -528,16 +632,16 @@ export default function TaskDetailsScreen() {
       })
       .finally(() => {
         deadlineSavePromiseRef.current = null;
-        setDeadlineSaving(false);
+        if (isMountedRef.current) {
+          setDeadlineSaving(false);
+        }
       });
   }
 
-  function updateDraftDate(date: Date, target = activeDatePicker) {
-    setDraftDate(date);
+  function updateDraftDate(date: Date) {
+    if (!isMountedRef.current) return;
 
-    if (target === "schedule") {
-      lastScheduleDateRef.current = date;
-    }
+    setDraftDate(date);
   }
 
   function openDatePicker(target: DatePickerTarget) {
@@ -545,7 +649,9 @@ export default function TaskDetailsScreen() {
 
     const initialDate =
       target === "schedule"
-        ? lastScheduleDateRef.current
+        ? task.schedule.type === "date"
+          ? parseLocalDate(task.schedule.date)
+          : new Date()
         : task.dueAt
           ? parseLocalDate(task.dueAt)
           : new Date();
@@ -564,9 +670,13 @@ export default function TaskDetailsScreen() {
         mode: "date",
         display: "calendar",
         onValueChange: (_event, selectedDate) => {
-          updateDraftDate(selectedDate, target);
+          updateDraftDate(selectedDate);
         },
-        onDismiss: () => setActiveDatePicker(null),
+        onDismiss: () => {
+          if (isMountedRef.current) {
+            setActiveDatePicker(null);
+          }
+        },
       });
     }
   }
@@ -719,6 +829,28 @@ export default function TaskDetailsScreen() {
                     }`}
                   />
                 </View>
+
+                {titleSaveError && (
+                  <View
+                    accessibilityLiveRegion="polite"
+                    className="ml-12 flex-row items-center justify-between gap-3 px-1"
+                  >
+                    <Text className="flex-1 text-xs text-red-600">
+                      {titleSaveError}
+                    </Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Retry saving task title"
+                      disabled={titleSaving || saving}
+                      onPress={() => void saveTitle()}
+                      className="rounded-md px-2 py-1 active:bg-zinc-100"
+                    >
+                      <Text className="text-xs font-semibold text-blue-600">
+                        Retry
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
               </View>
 
               <View className="gap-1.5">
@@ -754,6 +886,28 @@ export default function TaskDetailsScreen() {
                       : "border-zinc-200"
                   }`}
                 />
+
+                {descriptionSaveError && (
+                  <View
+                    accessibilityLiveRegion="polite"
+                    className="flex-row items-center justify-between gap-3 px-1"
+                  >
+                    <Text className="flex-1 text-xs text-red-600">
+                      {descriptionSaveError}
+                    </Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Retry saving task description"
+                      disabled={descriptionSaving || saving}
+                      onPress={() => void saveDescription()}
+                      className="rounded-md px-2 py-1 active:bg-zinc-100"
+                    >
+                      <Text className="text-xs font-semibold text-blue-600">
+                        Retry
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
               </View>
 
               <View className="gap-2">
