@@ -7,8 +7,7 @@
     "scheme": "reactnativetaskmanager",
     "userInterfaceStyle": "automatic",
     "web": {
-      "bundler": "metro",
-      "output": "static"
+      "bundler": "metro"
     },
     "plugins": [
       [

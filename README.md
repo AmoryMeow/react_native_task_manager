@@ -29,8 +29,8 @@ first and organized with as much—or as little—detail as needed.
 
 ## Current features
 
-- Navigate between the task list, a preview of planned decision tools, and a
-  placeholder for future settings.
+- Navigate between the task list, decision tools, and a placeholder for future
+  settings.
 - Quickly create a task and place it in Inbox, Today, Tomorrow, Soon, or
   Someday.
 - Group tasks into collapsible planning sections: Earlier, Today, Scheduled,
@@ -44,11 +44,11 @@ first and organized with as much—or as little—detail as needed.
   back into an active group reopens it.
 - Complete or reopen tasks from the list or task details, delete them with an
   Undo option, and keep all data locally in SQLite.
+- Use Task Roulette to pick one unfinished task scheduled for today or earlier,
+  try another suggestion, and open the selected task directly.
 
 ## Planned features
 
-- **Task Roulette** — choose a task when it is difficult to decide where to
-  start.
 - **Task Duel** — compare two tasks at a time instead of evaluating the entire
   list at once.
 - **Focus Mode** — provide a simpler workspace for one task with fewer

@@ -1,11 +1,8 @@
-import { ScrollView, Text, View } from "react-native";
+import { Link } from "expo-router";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const plannedTools = [
-  {
-    description: "Pick a task when you're not sure where to start.",
-    title: "Task Roulette",
-  },
   {
     description: "Compare two tasks at a time to make choosing easier.",
     title: "Task Duel",
@@ -34,6 +31,24 @@ export default function ToolsScreen() {
             Simple ways to choose a task and stay focused.
           </Text>
         </View>
+
+        <Link href="/tools/roulette" asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open Task Roulette"
+            className="min-h-24 rounded-2xl border border-zinc-200 bg-white p-4 active:bg-zinc-50"
+          >
+            <View className="mb-2 flex-row items-center justify-between gap-3">
+              <Text className="text-base font-semibold text-zinc-900">
+                Task Roulette
+              </Text>
+              <Text className="text-xl text-zinc-400">›</Text>
+            </View>
+            <Text className="text-sm leading-5 text-zinc-500">
+              Pick a task when you&apos;re not sure where to start.
+            </Text>
+          </Pressable>
+        </Link>
 
         {plannedTools.map((tool) => (
           <View
