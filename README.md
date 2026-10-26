@@ -44,7 +44,7 @@ first and organized with as much—or as little—detail as needed.
   back into an active group reopens it.
 - Complete or reopen tasks from the list or task details, delete them with an
   Undo option, and keep all data locally in SQLite.
-- Use Task Roulette to pick one unfinished task scheduled for today or earlier,
+- Use Task Roulette to pick one unfinished task from selected planning groups,
   try another suggestion, and open the selected task directly.
 
 ## Planned features

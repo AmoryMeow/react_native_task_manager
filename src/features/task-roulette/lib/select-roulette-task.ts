@@ -1,29 +1,45 @@
-import { toLocalDateString } from "@/entities/task/lib/format-task-schedule";
+import {
+  groupTasks,
+  type TaskGroupId,
+} from "@/entities/task/lib/group-tasks";
 import type { Task } from "@/entities/task/model/types";
 
 type RandomSource = () => number;
+export type RouletteTaskGroupId = Exclude<TaskGroupId, "completed">;
+
+export const DEFAULT_ROULETTE_GROUPS: readonly RouletteTaskGroupId[] = [
+  "earlier",
+  "today",
+];
 
 export function getEligibleRouletteTasks(
   tasks: readonly Task[],
   currentDate: Date,
+  selectedGroups: readonly RouletteTaskGroupId[] = DEFAULT_ROULETTE_GROUPS,
 ): Task[] {
-  const currentLocalDate = toLocalDateString(currentDate);
+  const selectedGroupIds = new Set(selectedGroups);
 
-  return tasks.filter(
-    (task) =>
-      task.status === "todo" &&
-      task.schedule.type === "date" &&
-      task.schedule.date <= currentLocalDate,
-  );
+  return groupTasks(tasks, currentDate)
+    .filter(
+      (group) =>
+        group.id !== "completed" && selectedGroupIds.has(group.id),
+    )
+    .flatMap((group) => group.data)
+    .filter((task) => task.status === "todo");
 }
 
 export function selectRouletteTask(
   tasks: readonly Task[],
   currentDate: Date,
+  selectedGroups: readonly RouletteTaskGroupId[] = DEFAULT_ROULETTE_GROUPS,
   previousTaskId?: string,
   random: RandomSource = Math.random,
 ): Task | null {
-  const eligibleTasks = getEligibleRouletteTasks(tasks, currentDate);
+  const eligibleTasks = getEligibleRouletteTasks(
+    tasks,
+    currentDate,
+    selectedGroups,
+  );
 
   if (eligibleTasks.length === 0) {
     return null;

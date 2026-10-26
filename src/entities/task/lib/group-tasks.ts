@@ -24,7 +24,10 @@ function toLocalDateString(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function groupTasks(tasks: Task[], today = new Date()): TaskGroup[] {
+export function groupTasks(
+  tasks: readonly Task[],
+  today = new Date(),
+): TaskGroup[] {
   const todayString = toLocalDateString(today);
 
   const groups: TaskGroup[] = [
