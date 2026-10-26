@@ -7,7 +7,8 @@
     "scheme": "reactnativetaskmanager",
     "userInterfaceStyle": "automatic",
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "server"
     },
     "plugins": [
       [
@@ -20,7 +21,8 @@
         }
       ],
       "expo-sqlite",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
