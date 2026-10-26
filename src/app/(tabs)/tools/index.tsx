@@ -4,10 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const plannedTools = [
   {
-    description: "Compare two tasks at a time to make choosing easier.",
-    title: "Task Duel",
-  },
-  {
     description: "Work on one task with fewer distractions.",
     title: "Focus Mode",
   },
@@ -46,6 +42,24 @@ export default function ToolsScreen() {
             </View>
             <Text className="text-sm leading-5 text-zinc-500">
               Pick a task when you&apos;re not sure where to start.
+            </Text>
+          </Pressable>
+        </Link>
+
+        <Link href="/tools/duel" asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open Task Duel"
+            className="min-h-24 rounded-2xl border border-zinc-200 bg-white p-4 active:bg-zinc-50"
+          >
+            <View className="mb-2 flex-row items-center justify-between gap-3">
+              <Text className="text-base font-semibold text-zinc-900">
+                Task Duel
+              </Text>
+              <Text className="text-xl text-zinc-400">›</Text>
+            </View>
+            <Text className="text-sm leading-5 text-zinc-500">
+              Compare two tasks and choose the one you would rather do.
             </Text>
           </Pressable>
         </Link>

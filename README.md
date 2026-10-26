@@ -46,11 +46,11 @@ first and organized with as much—or as little—detail as needed.
   Undo option, and keep all data locally in SQLite.
 - Use Task Roulette to pick one unfinished task from selected planning groups,
   spin again for another suggestion, and open the selected task directly.
+- Use Task Duel to compare two unfinished tasks from selected planning groups
+  and make one immediate choice without reviewing the entire list.
 
 ## Planned features
 
-- **Task Duel** — compare two tasks at a time instead of evaluating the entire
-  list at once.
 - **Focus Mode** — provide a simpler workspace for one task with fewer
   distractions.
 

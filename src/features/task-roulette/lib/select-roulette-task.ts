@@ -1,31 +1,21 @@
-import {
-  groupTasks,
-  type TaskGroupId,
-} from "@/entities/task/lib/group-tasks";
 import type { Task } from "@/entities/task/model/types";
+import {
+  DEFAULT_TASK_SELECTION_GROUPS,
+  getEligibleTasks,
+  type TaskSelectionGroupId,
+} from "@/features/task-selection/lib/get-eligible-tasks";
 
 type RandomSource = () => number;
-export type RouletteTaskGroupId = Exclude<TaskGroupId, "completed">;
+export type RouletteTaskGroupId = TaskSelectionGroupId;
 
-export const DEFAULT_ROULETTE_GROUPS: readonly RouletteTaskGroupId[] = [
-  "earlier",
-  "today",
-];
+export const DEFAULT_ROULETTE_GROUPS = DEFAULT_TASK_SELECTION_GROUPS;
 
 export function getEligibleRouletteTasks(
   tasks: readonly Task[],
   currentDate: Date,
   selectedGroups: readonly RouletteTaskGroupId[] = DEFAULT_ROULETTE_GROUPS,
 ): Task[] {
-  const selectedGroupIds = new Set(selectedGroups);
-
-  return groupTasks(tasks, currentDate)
-    .filter(
-      (group) =>
-        group.id !== "completed" && selectedGroupIds.has(group.id),
-    )
-    .flatMap((group) => group.data)
-    .filter((task) => task.status === "todo");
+  return getEligibleTasks(tasks, currentDate, selectedGroups);
 }
 
 export function selectRouletteTask(

@@ -21,6 +21,13 @@ export default function ToolsLayout() {
           title: "Task Roulette",
         }}
       />
+      <Stack.Screen
+        name="duel"
+        options={{
+          headerBackTitle: "Tools",
+          title: "Task Duel",
+        }}
+      />
     </Stack>
   );
 }
