@@ -82,6 +82,10 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
+          cache: npm
+
+      - name: Install deployment dependencies
+        run: npm ci
 
       - name: Download web export
         uses: actions/download-artifact@v8
