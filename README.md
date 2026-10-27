@@ -71,6 +71,7 @@ first and organized with as much—or as little—detail as needed.
 - NativeWind
 - Expo SQLite
 - React Native Gesture Handler and Reanimated
+- Jest and jest-expo
 
 ## Getting started
 
@@ -111,13 +112,14 @@ To run the project checks:
 ```bash
 npm run lint
 npx tsc --noEmit
+npm test -- --runInBand
 ```
 
 ## CI/CD
 
-GitHub Actions runs TypeScript validation, ESLint, and a production web export
-on every push and pull request. The project does not currently have an
-automated test suite, so these checks are not presented as unit tests.
+GitHub Actions runs TypeScript validation, ESLint, unit tests, and a production
+web export on every push and pull request. The same checks run before every
+manual deployment.
 
 Deployments are always manual. In GitHub, open **Actions → Deploy web → Run
 workflow**, select the Git ref, and choose either `preview` or `production`.
