@@ -26,6 +26,7 @@ jobs:
     timeout-minutes: 25
     environment:
       name: ${{ inputs.target }}
+      url: ${{ steps.deploy.outputs.url }}
 
     steps:
       - name: Restrict production deployment to main
@@ -66,14 +67,68 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy preview
-        if: inputs.target == 'preview'
+      - name: Deploy to EAS Hosting
+        id: deploy
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx --yes eas-cli@26.0.0 deploy --non-interactive --export-dir dist
+          DEPLOY_TARGET: ${{ inputs.target }}
+        shell: bash
+        run: |
+          set -euo pipefail
 
-      - name: Deploy production
-        if: inputs.target == 'production'
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: npx --yes eas-cli@26.0.0 deploy --prod --non-interactive --export-dir dist
+          if [ "$DEPLOY_TARGET" = "production" ]; then
+            deployment_json="$(npx --yes eas-cli@26.0.0 deploy --prod --json --non-interactive --export-dir dist)"
+          else
+            deployment_json="$(npx --yes eas-cli@26.0.0 deploy --json --non-interactive --export-dir dist)"
+          fi
+
+          deployment_url="$(
+            printf '%s' "$deployment_json" | node -e '
+              const fs = require("node:fs");
+
+              let deployment;
+              try {
+                deployment = JSON.parse(fs.readFileSync(0, "utf8"));
+              } catch {
+                console.error("::error::EAS CLI returned invalid deployment JSON.");
+                process.exit(1);
+              }
+
+              const url = process.env.DEPLOY_TARGET === "production"
+                ? deployment.production?.url
+                : deployment.url;
+
+              if (typeof url !== "string" || url.length === 0) {
+                console.error(`::error::EAS CLI did not return the expected ${process.env.DEPLOY_TARGET} deployment URL.`);
+                process.exit(1);
+              }
+
+              let parsedUrl;
+              try {
+                parsedUrl = new URL(url);
+              } catch {
+                console.error("::error::EAS CLI returned an invalid deployment URL.");
+                process.exit(1);
+              }
+
+              if (
+                parsedUrl.protocol !== "https:" ||
+                !parsedUrl.hostname ||
+                parsedUrl.username ||
+                parsedUrl.password ||
+                /[\r\n]/.test(url)
+              ) {
+                console.error("::error::EAS CLI returned an unsafe deployment URL; expected a nonempty HTTPS URL.");
+                process.exit(1);
+              }
+
+              process.stdout.write(parsedUrl.href);
+            '
+          )"
+
+          printf 'url=%s\n' "$deployment_url" >> "$GITHUB_OUTPUT"
+          {
+            printf '## EAS Hosting deployment\n\n'
+            printf -- '- **Target:** %s\n' "$DEPLOY_TARGET"
+            printf -- '- **URL:** [%s](%s)\n' "$deployment_url" "$deployment_url"
+          } >> "$GITHUB_STEP_SUMMARY"
