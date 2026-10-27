@@ -23,7 +23,7 @@ jobs:
   checks:
     name: Checks
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Restrict production deployment to main
@@ -57,6 +57,23 @@ jobs:
 
       - name: Export web application
         run: npx expo export --platform web
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e:ci
+
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Upload web export
         uses: actions/upload-artifact@v7

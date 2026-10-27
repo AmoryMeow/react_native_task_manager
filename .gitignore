@@ -9,6 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Playwright
+playwright-report/
+test-results/
+
 # Native
 .kotlin/
 *.orig.*

@@ -1,0 +1,117 @@
+import { expect, test, type Page } from "@playwright/test";
+
+async function openTaskList(page: Page) {
+  await page.goto("/");
+  await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
+  await expect(page.getByText("Loading tasks...")).toBeHidden();
+
+  await expect
+    .poll(() => page.evaluate(() => globalThis.crossOriginIsolated))
+    .toBe(true);
+  expect(
+    await page.evaluate(() => typeof globalThis.SharedArrayBuffer),
+  ).toBe("function");
+}
+
+async function createTask(page: Page, title: string) {
+  await page.getByPlaceholder("Add a small next step").fill(title);
+  await page.getByRole("button", { name: "Add task" }).click();
+  await expect(page.getByLabel(`Edit ${title}`)).toBeVisible();
+}
+
+async function openOnlyTask(page: Page) {
+  await page.getByRole("button", { name: "Open task details" }).click();
+  await expect(page.getByText("Task details", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Task title")).toBeVisible();
+}
+
+test("creates a task and persists it after reload", async ({ page }) => {
+  const title = "E2E persistent task";
+
+  await openTaskList(page);
+  await createTask(page, title);
+  await page.reload();
+
+  await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
+  await expect(page.getByLabel(`Edit ${title}`)).toBeVisible();
+});
+
+test("persists title and description edits", async ({ page }) => {
+  const originalTitle = "E2E editable task";
+  const editedTitle = "E2E edited task";
+  const description = "Description saved by the browser E2E test.";
+
+  await openTaskList(page);
+  await createTask(page, originalTitle);
+  await openOnlyTask(page);
+
+  await page.getByLabel("Task title").fill(editedTitle);
+  await page.getByLabel("Task description").fill(description);
+  await page.getByRole("button", { name: "Done" }).click();
+
+  await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
+  await expect(page.getByLabel(`Edit ${editedTitle}`)).toBeVisible();
+
+  await openOnlyTask(page);
+  await expect(page.getByLabel("Task title")).toHaveValue(editedTitle);
+  await expect(page.getByLabel("Task description")).toHaveValue(description);
+
+  await page.reload();
+  await expect(page.getByText("Task details", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Task title")).toHaveValue(editedTitle);
+  await expect(page.getByLabel("Task description")).toHaveValue(description);
+});
+
+test("persists exact local schedule and deadline dates", async ({ page }) => {
+  const title = "E2E dated task";
+  const scheduleDate = "2030-06-15";
+  const deadlineDate = "2030-06-20";
+
+  await openTaskList(page);
+  await createTask(page, title);
+  await openOnlyTask(page);
+
+  await page.getByRole("button", { name: /^Schedule,/ }).click();
+  await page
+    .getByRole("button", { name: "Choose a schedule date" })
+    .click();
+  await page.getByLabel("Schedule date", { exact: true }).fill(scheduleDate);
+  await page.getByRole("button", { name: "Apply selected date" }).click();
+  await expect(
+    page.getByRole("button", { name: "Schedule, Jun 15, 2030" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Add deadline" }).click();
+  await page.getByLabel("Deadline date", { exact: true }).fill(deadlineDate);
+  await page.getByRole("button", { name: "Apply selected date" }).click();
+  await expect(
+    page.getByRole("button", { name: "Deadline, Jun 20, 2030" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
+  await openOnlyTask(page);
+
+  await page.getByRole("button", { name: /^Schedule,/ }).click();
+  await page
+    .getByRole("button", { name: "Choose a schedule date" })
+    .click();
+  await expect(
+    page.getByLabel("Schedule date", { exact: true }),
+  ).toHaveValue(scheduleDate);
+  await page.getByRole("button", { name: "Cancel date selection" }).click();
+
+  await page.getByRole("button", { name: /^Deadline,/ }).click();
+  await expect(
+    page.getByLabel("Deadline date", { exact: true }),
+  ).toHaveValue(deadlineDate);
+  await page.getByRole("button", { name: "Cancel date selection" }).click();
+
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Schedule, Jun 15, 2030" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Deadline, Jun 20, 2030" }),
+  ).toBeVisible();
+});

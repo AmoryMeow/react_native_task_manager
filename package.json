@@ -25,6 +25,7 @@
     "react-native-worklets": "0.10.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.2",
     "babel-preset-expo": "~57.0.0",
@@ -41,13 +42,20 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "node ./scripts/patch-expo-metro-worker.cjs && expo start --web",
+    "export:web": "expo export --platform web",
     "lint": "expo lint",
     "test": "jest",
-    "test:ci": "jest --runInBand"
+    "test:ci": "jest --runInBand",
+    "test:e2e": "npm run export:web && playwright test",
+    "test:e2e:ci": "playwright test",
+    "test:e2e:report": "playwright show-report"
   },
   "jest": {
     "preset": "jest-expo",
     "watchman": false,
+    "testPathIgnorePatterns": [
+      "<rootDir>/e2e/"
+    ],
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1"
     }

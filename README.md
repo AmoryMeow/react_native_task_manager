@@ -72,6 +72,7 @@ first and organized with as much—or as little—detail as needed.
 - Expo SQLite
 - React Native Gesture Handler and Reanimated
 - Jest and jest-expo
+- Playwright
 
 ## Getting started
 
@@ -115,11 +116,26 @@ npx tsc --noEmit
 npm test -- --runInBand
 ```
 
+The web end-to-end tests build a production export, serve it locally with Expo,
+and run the critical task workflows in Chromium:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
+
+To open the last HTML report:
+
+```bash
+npm run test:e2e:report
+```
+
 ## CI/CD
 
-GitHub Actions runs TypeScript validation, ESLint, unit tests, and a production
-web export on every push and pull request. The same checks run before every
-manual deployment.
+GitHub Actions runs TypeScript validation, ESLint, unit tests, a production web
+export, and Chromium end-to-end tests on every push and pull request. The same
+checks run before every manual deployment. Failed E2E runs upload their HTML
+report, screenshots, and traces as a workflow artifact.
 
 Deployments are always manual. In GitHub, open **Actions → Deploy web → Run
 workflow**, select the Git ref, and choose either `preview` or `production`.
