@@ -66,6 +66,46 @@ test("persists title and description edits", async ({ page }) => {
   await expect(page.getByLabel("Task description")).toHaveValue(description);
 });
 
+test("opens Focus Mode, preserves edits, and completes the task", async ({
+  page,
+}) => {
+  const originalTitle = "E2E focus task";
+  const editedTitle = "E2E focused task";
+  const description = "One thing at a time.";
+
+  await openTaskList(page);
+  await createTask(page, originalTitle);
+  await openOnlyTask(page);
+
+  await page.getByLabel("Task title", { exact: true }).fill(editedTitle);
+  await page.getByLabel("Task description").fill(description);
+  await page.getByRole("button", { name: "Start focus" }).click();
+
+  await expect(page).toHaveURL(/\/focus\//);
+  await expect(
+    page.getByRole("heading", { name: editedTitle }),
+  ).toBeVisible();
+  await expect(page.getByText(description, { exact: true })).toBeVisible();
+
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: editedTitle }),
+  ).toBeVisible();
+  await expect(page.getByText(description, { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Exit focus" }).click();
+  await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
+  await expect(page.getByLabel(`Edit ${editedTitle}`)).toBeVisible();
+
+  await openOnlyTask(page);
+  await page.getByRole("button", { name: "Start focus" }).click();
+  await page.getByRole("button", { name: "Complete task" }).click();
+
+  await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Expand Completed" }).click();
+  await expect(page.getByRole("checkbox", { name: "✓" })).toBeVisible();
+});
+
 test("persists exact local schedule and deadline dates", async ({ page }) => {
   const title = "E2E dated task";
   const scheduleDate = "2030-06-15";

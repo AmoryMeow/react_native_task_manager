@@ -504,6 +504,19 @@ export default function TaskDetailsScreen() {
     });
   }
 
+  function handleStartFocus() {
+    if (!task || task.status === "done" || isBusy) return;
+
+    const taskId = task.id;
+
+    void saveAndDismiss(() => {
+      router.replace({
+        pathname: "/focus/[id]",
+        params: { id: taskId },
+      });
+    });
+  }
+
   function toggleCompletion() {
     if (!task || isBusy || completionSavePromiseRef.current) return;
 
@@ -1123,6 +1136,23 @@ export default function TaskDetailsScreen() {
                   </Text>
                 )}
               </View>
+
+              {task.status !== "done" && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Start focus"
+                  accessibilityState={{ disabled: isBusy }}
+                  disabled={isBusy}
+                  onPress={handleStartFocus}
+                  className={`min-h-12 items-center justify-center rounded-xl bg-zinc-950 px-4 active:bg-zinc-700 ${
+                    isBusy ? "opacity-40" : ""
+                  }`}
+                >
+                  <Text className="text-base font-semibold text-white">
+                    Start focus
+                  </Text>
+                </Pressable>
+              )}
             </ScrollView>
           ) : (
             <Text className="text-zinc-500">Task not found</Text>

@@ -22,6 +22,13 @@ export default function RootLayout() {
               headerShown: false,
             }}
           />
+          <Stack.Screen
+            name="focus/[id]"
+            options={{
+              presentation: "card",
+              headerShown: false,
+            }}
+          />
         </Stack>
       </SQLiteProvider>
     </GestureHandlerRootView>
