@@ -124,3 +124,49 @@ test("starts Focus Mode with the task chosen in Duel", async ({ page }) => {
     page.getByRole("button", { name: `Start focus on ${chosenTitle}` }),
   ).toBeVisible();
 });
+
+test("searches and starts Focus Mode from the Tools task picker", async ({
+  page,
+}) => {
+  const title = "Tools Focus Task";
+
+  await openTaskList(page);
+  await createTodayTask(page, title);
+  await openTools(page);
+  await page.getByRole("link", { name: "Open Focus Mode" }).click();
+
+  await expect(page).toHaveURL(/\/tools\/focus$/);
+  await expect(
+    page.getByRole("button", { name: `Start focus on ${title}` }),
+  ).toBeVisible();
+
+  const search = page.getByRole("textbox", { name: "Search focus tasks" });
+  await search.fill("missing");
+  await expect(
+    page.getByText("No matching tasks", { exact: true }),
+  ).toBeVisible();
+
+  await search.fill("tools FOCUS");
+  await page
+    .getByRole("button", { name: `Start focus on ${title}` })
+    .click();
+
+  await expect(page).toHaveURL(/\/focus\/[^?]+\?from=tools$/);
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+
+  await page.getByRole("button", { name: "Exit focus" }).click();
+  await expect(page).toHaveURL(/\/tools\/focus$/);
+  await expect(
+    page.getByRole("button", { name: `Start focus on ${title}` }),
+  ).toBeVisible();
+
+  await page
+    .getByRole("button", { name: `Start focus on ${title}` })
+    .click();
+  await page.getByRole("button", { name: "Complete task" }).click();
+
+  await expect(page).toHaveURL(/\/tools\/focus$/);
+  await expect(
+    page.getByText("No tasks available", { exact: true }),
+  ).toBeVisible();
+});

@@ -57,9 +57,9 @@ first and organized with as much—or as little—detail as needed.
   spin again for another suggestion, and open the selected task directly.
 - Use Task Duel to compare two unfinished tasks from selected planning groups
   and make one immediate choice without reviewing the entire list.
-- Start Focus Mode from an unfinished task's details, a Roulette result, or a
-  Duel choice to work without the surrounding task list, then complete it or
-  return without changing it.
+- Start Focus Mode from Tools by searching or browsing all unfinished tasks,
+  or enter it directly from task details, a Roulette result, or a Duel choice.
+  Focus Mode keeps one task visible until it is completed or you return.
 
 ## Tech stack
 

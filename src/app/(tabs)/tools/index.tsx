@@ -2,13 +2,6 @@ import { Link } from "expo-router";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const plannedTools = [
-  {
-    description: "Work on one task with fewer distractions.",
-    title: "Focus Mode",
-  },
-];
-
 export default function ToolsScreen() {
   return (
     <SafeAreaView
@@ -64,26 +57,23 @@ export default function ToolsScreen() {
           </Pressable>
         </Link>
 
-        {plannedTools.map((tool) => (
-          <View
-            key={tool.title}
-            className="rounded-2xl border border-zinc-200 bg-white p-4"
+        <Link href="/tools/focus" asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open Focus Mode"
+            className="min-h-24 rounded-2xl border border-zinc-200 bg-white p-4 active:bg-zinc-50"
           >
             <View className="mb-2 flex-row items-center justify-between gap-3">
               <Text className="text-base font-semibold text-zinc-900">
-                {tool.title}
+                Focus Mode
               </Text>
-              <View className="rounded-full bg-zinc-100 px-2.5 py-1">
-                <Text className="text-xs font-medium text-zinc-500">
-                  Planned
-                </Text>
-              </View>
+              <Text className="text-xl text-zinc-400">›</Text>
             </View>
             <Text className="text-sm leading-5 text-zinc-500">
-              {tool.description}
+              Choose one task and work with fewer distractions.
             </Text>
-          </View>
-        ))}
+          </Pressable>
+        </Link>
       </ScrollView>
     </SafeAreaView>
   );

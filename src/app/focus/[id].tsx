@@ -21,7 +21,7 @@ import type { Task } from "../../entities/task/model/types";
 import { createTaskRepository } from "../../entities/task/repository/task-repository";
 
 type LoadState = "loading" | "ready" | "error";
-type FocusOrigin = "roulette" | "duel";
+type FocusOrigin = "roulette" | "duel" | "tools";
 
 export default function FocusScreen() {
   const { id, from } = useLocalSearchParams<{
@@ -112,6 +112,11 @@ export default function FocusScreen() {
       return;
     }
 
+    if (from === "tools") {
+      router.dismissTo("/tools/focus");
+      return;
+    }
+
     router.dismissTo("/");
   }
 
@@ -159,6 +164,8 @@ export default function FocusScreen() {
       ? "Back to Task Roulette"
       : from === "duel"
         ? "Back to Task Duel"
+        : from === "tools"
+          ? "Back to Focus Mode"
         : "Back to tasks";
 
   return (
