@@ -6,7 +6,7 @@ import {
   useNavigation,
 } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -43,6 +43,16 @@ const scheduleOptions: { label: string; value: ScheduleOption }[] = [
 
 const DEFAULT_SHEET_DETENTS = [0.5, 0.9];
 const EXPANDED_SHEET_DETENTS = [0.9];
+
+function DismissKeyboardOnPress({ children }: { children: ReactElement }) {
+  if (Platform.OS === "web") return children;
+
+  return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      {children}
+    </TouchableWithoutFeedback>
+  );
+}
 
 function toTaskSchedule(option: ScheduleOption): TaskSchedule {
   if (option === "today" || option === "tomorrow") {
@@ -485,7 +495,13 @@ export default function TaskDetailsScreen() {
   }
 
   function handleDone() {
-    void saveAndDismiss(() => router.back());
+    void saveAndDismiss(() => {
+      if (navigation.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/");
+      }
+    });
   }
 
   function toggleCompletion() {
@@ -732,7 +748,7 @@ export default function TaskDetailsScreen() {
         }}
       />
 
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <DismissKeyboardOnPress>
         <View className="flex-1 bg-white px-5 pt-6">
           <View className="mb-6 flex-row items-center justify-between">
             <Text className="text-lg font-semibold">Task details</Text>
@@ -1112,7 +1128,7 @@ export default function TaskDetailsScreen() {
             <Text className="text-zinc-500">Task not found</Text>
           )}
         </View>
-      </TouchableWithoutFeedback>
+      </DismissKeyboardOnPress>
     </>
   );
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, View } from "react-native";
 
 import { formatTaskSchedule } from "@/entities/task/lib/format-task-schedule";
 import type { Task } from "../model/types";
@@ -139,6 +139,15 @@ export function TaskCard({
           }}
           onChangeText={setDraftTitle}
           onFocus={() => {
+            if (
+              Platform.OS === "web" &&
+              !isEditing &&
+              !isEditDisabled &&
+              !isUpdating
+            ) {
+              startEditing();
+            }
+
             if (isSaveSettledRef.current) savePromiseRef.current = null;
           }}
           onPressIn={() => {
