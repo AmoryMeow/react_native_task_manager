@@ -1,6 +1,4 @@
-import DateTimePicker, {
-  DateTimePickerAndroid,
-} from "@react-native-community/datetimepicker";
+import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import {
   router,
   Stack,
@@ -28,6 +26,7 @@ import {
 } from "../../entities/task/lib/format-task-schedule";
 import type { Task, TaskSchedule } from "../../entities/task/model/types";
 import { createTaskRepository } from "../../entities/task/repository/task-repository";
+import { CalendarDatePicker } from "../../shared/ui/date-picker/calendar-date-picker";
 import { CalendarIcon } from "../../shared/ui/icons/calendar-icon";
 import { ChevronIcon } from "../../shared/ui/icons/chevron-icon";
 
@@ -100,6 +99,7 @@ function isScheduledAfterDeadline(task: Task): boolean {
 }
 
 interface InlineDatePickerProps {
+  accessibilityLabel: string;
   draftDate: Date;
   isSaving: boolean;
   onApply: () => void;
@@ -109,6 +109,7 @@ interface InlineDatePickerProps {
 }
 
 function InlineDatePicker({
+  accessibilityLabel,
   draftDate,
   isSaving,
   onApply,
@@ -118,17 +119,12 @@ function InlineDatePicker({
 }: InlineDatePickerProps) {
   return (
     <View className="mt-2 rounded-xl border border-zinc-200 bg-zinc-50 p-2.5">
-      {Platform.OS === "ios" && (
-        <DateTimePicker
-          value={draftDate}
-          mode="date"
-          display="inline"
-          onValueChange={(_event, selectedDate) => onChange(selectedDate)}
-          accentColor="#18181b"
-          themeVariant="light"
-          style={{ height: 320, width: "100%" }}
-        />
-      )}
+      <CalendarDatePicker
+        accessibilityLabel={accessibilityLabel}
+        disabled={isSaving}
+        onChange={onChange}
+        value={draftDate}
+      />
 
       <View className="border-t border-zinc-200 pt-2.5">
         <Text className="text-sm font-medium text-zinc-600">
@@ -1019,6 +1015,7 @@ export default function TaskDetailsScreen() {
                         }
                       >
                         <InlineDatePicker
+                          accessibilityLabel="Schedule date"
                           draftDate={draftDate}
                           isSaving={scheduleSaving}
                           onApply={applyPickedDate}
@@ -1091,6 +1088,7 @@ export default function TaskDetailsScreen() {
                     }
                   >
                     <InlineDatePicker
+                      accessibilityLabel="Deadline date"
                       draftDate={draftDate}
                       isSaving={deadlineSaving}
                       onApply={applyPickedDate}

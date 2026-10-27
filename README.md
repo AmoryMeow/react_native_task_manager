@@ -84,6 +84,19 @@ If the device cannot reach the local development server, try:
 npx expo start --tunnel
 ```
 
+To run the browser version, use the project script so the Expo SDK 57 web
+worker compatibility fix is applied before Metro starts:
+
+```bash
+npm run web
+```
+
+If the default port is already in use, choose another one explicitly:
+
+```bash
+npm run web -- --port 8082
+```
+
 To run the project checks:
 
 ```bash
