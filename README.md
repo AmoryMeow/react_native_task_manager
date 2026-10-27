@@ -8,6 +8,15 @@ start.
 > **Status: Work in progress.** The core task workflow is usable, while several
 > prioritization and focus features are still being designed and built.
 
+## Live Demo
+
+[Try the interactive demo](https://react-native-task-manager.expo.app)
+
+The web demo stores tasks locally in your browser. Data is not synchronized
+between devices.
+
+> Work in progress. Optimized for mobile screens.
+
 ## Why this app
 
 Long task lists often mix immediate work, future plans, and ideas in one place.
