@@ -1,0 +1,79 @@
+name: Deploy web
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: EAS Hosting deployment target
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eas-hosting-${{ inputs.target == 'production' && 'production' || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: ${{ inputs.target }}
+
+    steps:
+      - name: Restrict production deployment to main
+        if: inputs.target == 'production' && github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Production deployments are only allowed from the main branch."
+          exit 1
+
+      - name: Check out selected ref
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx expo lint
+
+      - name: Export web application
+        run: npx expo export --platform web
+
+      - name: Require Expo access token
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Missing required GitHub Actions secret: EXPO_TOKEN"
+            exit 1
+          fi
+
+      - name: Deploy preview
+        if: inputs.target == 'preview'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx --yes eas-cli@26.0.0 deploy --non-interactive --export-dir dist
+
+      - name: Deploy production
+        if: inputs.target == 'production'
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: npx --yes eas-cli@26.0.0 deploy --prod --non-interactive --export-dir dist

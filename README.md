@@ -112,3 +112,24 @@ To run the project checks:
 npm run lint
 npx tsc --noEmit
 ```
+
+## CI/CD
+
+GitHub Actions runs TypeScript validation, ESLint, and a production web export
+on every push and pull request. The project does not currently have an
+automated test suite, so these checks are not presented as unit tests.
+
+Deployments are always manual. In GitHub, open **Actions → Deploy web → Run
+workflow**, select the Git ref, and choose either `preview` or `production`.
+Production deployments are accepted only from the `main` branch.
+
+Before running a deployment, create an
+[Expo access token](https://docs.expo.dev/accounts/programmatic-access/) and
+save it as the `EXPO_TOKEN` repository secret under **Settings → Secrets and
+variables → Actions**. Create `preview` and `production` GitHub Environments as
+well; required reviewers and a `main`-only deployment branch rule are
+recommended for the production environment.
+
+The deployment URL is printed in the workflow log and is also available in the
+project's EAS Hosting deployments. Commits and pull requests never trigger a
+deployment automatically.
