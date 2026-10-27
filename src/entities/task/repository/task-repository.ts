@@ -117,12 +117,16 @@ export function createTaskRepository(db: SQLiteDatabase) {
       id: string,
       description: string,
     ): Promise<void> {
-      await db.runAsync(
+      const result = await db.runAsync(
         `UPDATE tasks
          SET description = ?, updated_at = ?
          WHERE id = ? AND deleted_at IS NULL`,
         [description, new Date().toISOString(), id],
       );
+
+      if (result.changes === 0) {
+        throw new Error(`Task ${id} was not found`);
+      }
     },
 
     async addTask(title: string, schedule: TaskSchedule): Promise<Task> {
