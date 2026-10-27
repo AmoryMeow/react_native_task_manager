@@ -97,8 +97,10 @@ export default function TaskRouletteScreen() {
     useState<RouletteInteractionState>("idle");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isFocusNavigationPending, setIsFocusNavigationPending] =
+    useState(false);
   const selectedTaskIdRef = useRef<string | null>(null);
-  const isReturningFromTaskDetailsRef = useRef(false);
+  const shouldPreserveResultOnReturnRef = useRef(false);
   const selectedGroupsRef = useRef<readonly RouletteTaskGroupId[]>(
     DEFAULT_ROULETTE_GROUPS,
   );
@@ -108,6 +110,7 @@ export default function TaskRouletteScreen() {
     null,
   );
   const pendingSelectionRef = useRef<Task | null>(null);
+  const focusNavigationPendingRef = useRef(false);
   const reelTranslateY = useSharedValue(0);
   const animatedReelStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: reelTranslateY.value }],
@@ -230,8 +233,11 @@ export default function TaskRouletteScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const preserveResult = isReturningFromTaskDetailsRef.current;
-      isReturningFromTaskDetailsRef.current = false;
+      focusNavigationPendingRef.current = false;
+      setIsFocusNavigationPending(false);
+
+      const preserveResult = shouldPreserveResultOnReturnRef.current;
+      shouldPreserveResultOnReturnRef.current = false;
       void loadTasks(preserveResult);
 
       return () => {
@@ -242,7 +248,12 @@ export default function TaskRouletteScreen() {
   );
 
   const spin = () => {
-    if (interactionState === "spinning") return;
+    if (
+      interactionState === "spinning" ||
+      focusNavigationPendingRef.current
+    ) {
+      return;
+    }
 
     const currentDate = new Date();
     const eligibleTasks = getEligibleRouletteTasks(
@@ -327,9 +338,15 @@ export default function TaskRouletteScreen() {
   };
 
   const openSelectedTask = () => {
-    if (!selectedTask || interactionState !== "result") return;
+    if (
+      !selectedTask ||
+      interactionState !== "result" ||
+      focusNavigationPendingRef.current
+    ) {
+      return;
+    }
 
-    isReturningFromTaskDetailsRef.current = true;
+    shouldPreserveResultOnReturnRef.current = true;
 
     router.push({
       pathname: "/task/[id]",
@@ -337,7 +354,29 @@ export default function TaskRouletteScreen() {
     });
   };
 
+  const startFocus = () => {
+    if (
+      !selectedTask ||
+      selectedTask.status !== "todo" ||
+      interactionState !== "result" ||
+      focusNavigationPendingRef.current
+    ) {
+      return;
+    }
+
+    focusNavigationPendingRef.current = true;
+    setIsFocusNavigationPending(true);
+    shouldPreserveResultOnReturnRef.current = true;
+
+    router.push({
+      pathname: "/focus/[id]",
+      params: { id: selectedTask.id, from: "roulette" },
+    });
+  };
+
   const isSpinning = interactionState === "spinning";
+  const hasResult = interactionState === "result" && selectedTask !== null;
+  const resultActionsDisabled = isSpinning || isFocusNavigationPending;
   const eligibleTasks = getEligibleRouletteTasks(
     tasks,
     new Date(),
@@ -514,23 +553,22 @@ export default function TaskRouletteScreen() {
             </View>
 
             <View className="gap-3">
-              {selectedTask && (
+              {hasResult ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Open ${selectedTask.title}`}
-                  accessibilityState={{ disabled: isSpinning }}
-                  disabled={isSpinning}
+                  accessibilityLabel={`Start focus on ${selectedTask.title}`}
+                  accessibilityState={{ disabled: resultActionsDisabled }}
+                  disabled={resultActionsDisabled}
                   className={`min-h-12 justify-center rounded-xl bg-zinc-950 px-5 active:bg-zinc-800 ${
-                    isSpinning ? "opacity-40" : ""
+                    resultActionsDisabled ? "opacity-40" : ""
                   }`}
-                  onPress={openSelectedTask}
+                  onPress={startFocus}
                 >
                   <Text className="text-center text-base font-semibold text-white">
-                    Open task
+                    Start focus
                   </Text>
                 </Pressable>
-              )}
-              {!selectedTask && (
+              ) : (
                 <View
                   accessibilityElementsHidden
                   importantForAccessibility="no-hide-descendants"
@@ -538,35 +576,54 @@ export default function TaskRouletteScreen() {
                   className="min-h-12 justify-center px-5 opacity-0"
                 >
                   <Text className="text-center text-base font-semibold">
-                    Open task
+                    Start focus
                   </Text>
                 </View>
               )}
 
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Spin Task Roulette"
-                accessibilityState={{ disabled: isSpinning }}
-                disabled={isSpinning}
-                className={`min-h-12 justify-center rounded-xl px-5 ${
-                  selectedTask
-                    ? "border border-zinc-300 bg-white active:bg-zinc-50"
-                    : "bg-zinc-950 active:bg-zinc-800"
-                } ${isSpinning ? "opacity-40" : ""}`}
-                onPress={spin}
-              >
-                <Text
-                  className={`text-center text-base font-semibold ${
-                    selectedTask ? "text-zinc-900" : "text-white"
-                  }`}
+              <View className={hasResult ? "flex-row gap-3" : ""}>
+                {hasResult ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${selectedTask.title}`}
+                    accessibilityState={{ disabled: resultActionsDisabled }}
+                    disabled={resultActionsDisabled}
+                    className={`min-h-12 flex-1 justify-center rounded-xl border border-zinc-300 bg-white px-4 active:bg-zinc-50 ${
+                      resultActionsDisabled ? "opacity-40" : ""
+                    }`}
+                    onPress={openSelectedTask}
+                  >
+                    <Text className="text-center text-base font-semibold text-zinc-900">
+                      Open task
+                    </Text>
+                  </Pressable>
+                ) : null}
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Spin Task Roulette"
+                  accessibilityState={{ disabled: resultActionsDisabled }}
+                  disabled={resultActionsDisabled}
+                  className={`min-h-12 justify-center rounded-xl px-4 ${
+                    hasResult
+                      ? "flex-1 border border-zinc-300 bg-white active:bg-zinc-50"
+                      : "bg-zinc-950 px-5 active:bg-zinc-800"
+                  } ${resultActionsDisabled ? "opacity-40" : ""}`}
+                  onPress={spin}
                 >
-                  {isSpinning
-                    ? "Spinning…"
-                    : interactionState === "result"
-                      ? "Spin again"
-                      : "Spin"}
-                </Text>
-              </Pressable>
+                  <Text
+                    className={`text-center text-base font-semibold ${
+                      hasResult ? "text-zinc-900" : "text-white"
+                    }`}
+                  >
+                    {isSpinning
+                      ? "Spinning…"
+                      : interactionState === "result"
+                        ? "Spin again"
+                        : "Spin"}
+                  </Text>
+                </Pressable>
+              </View>
             </View>
           </View>
         )}

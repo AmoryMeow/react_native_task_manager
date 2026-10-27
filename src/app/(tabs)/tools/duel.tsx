@@ -65,13 +65,16 @@ export default function TaskDuelScreen() {
   >([...DEFAULT_TASK_SELECTION_GROUPS]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isFocusNavigationPending, setIsFocusNavigationPending] =
+    useState(false);
   const selectedGroupsRef = useRef<readonly TaskSelectionGroupId[]>(
     DEFAULT_TASK_SELECTION_GROUPS,
   );
   const pairRef = useRef<TaskDuelPair | null>(null);
   const selectedTaskIdRef = useRef<string | null>(null);
-  const isReturningFromTaskDetailsRef = useRef(false);
+  const shouldPreserveSelectionOnReturnRef = useRef(false);
   const loadRequestIdRef = useRef(0);
+  const focusNavigationPendingRef = useRef(false);
 
   const setCurrentPair = useCallback((nextPair: TaskDuelPair | null) => {
     pairRef.current = nextPair;
@@ -159,8 +162,11 @@ export default function TaskDuelScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const preserveSelection = isReturningFromTaskDetailsRef.current;
-      isReturningFromTaskDetailsRef.current = false;
+      focusNavigationPendingRef.current = false;
+      setIsFocusNavigationPending(false);
+
+      const preserveSelection = shouldPreserveSelectionOnReturnRef.current;
+      shouldPreserveSelectionOnReturnRef.current = false;
       void loadTasks(preserveSelection);
 
       return () => {
@@ -200,15 +206,35 @@ export default function TaskDuelScreen() {
   };
 
   const drawNewPair = () => {
-    if (!hasAlternativePairs) return;
+    if (!hasAlternativePairs || focusNavigationPendingRef.current) return;
     resetToComparison(eligibleTasks, pairRef.current);
   };
 
   const openTask = (task: Task) => {
-    isReturningFromTaskDetailsRef.current = true;
+    if (focusNavigationPendingRef.current) return;
+
+    shouldPreserveSelectionOnReturnRef.current = true;
     router.push({
       pathname: "/task/[id]",
       params: { id: task.id },
+    });
+  };
+
+  const startFocus = (task: Task) => {
+    if (
+      task.status !== "todo" ||
+      focusNavigationPendingRef.current
+    ) {
+      return;
+    }
+
+    focusNavigationPendingRef.current = true;
+    setIsFocusNavigationPending(true);
+    shouldPreserveSelectionOnReturnRef.current = true;
+
+    router.push({
+      pathname: "/focus/[id]",
+      params: { id: task.id, from: "duel" },
     });
   };
 
@@ -274,16 +300,36 @@ export default function TaskDuelScreen() {
                 </Text>
               </View>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${onlyTask.title}`}
-              className="min-h-12 justify-center rounded-xl bg-zinc-950 px-5 active:bg-zinc-800"
-              onPress={() => openTask(onlyTask)}
-            >
-              <Text className="text-center text-base font-semibold text-white">
-                Open task
-              </Text>
-            </Pressable>
+            <View className="gap-3">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Start focus on ${onlyTask.title}`}
+                accessibilityState={{ disabled: isFocusNavigationPending }}
+                disabled={isFocusNavigationPending}
+                className={`min-h-12 justify-center rounded-xl bg-zinc-950 px-5 active:bg-zinc-800 ${
+                  isFocusNavigationPending ? "opacity-40" : ""
+                }`}
+                onPress={() => startFocus(onlyTask)}
+              >
+                <Text className="text-center text-base font-semibold text-white">
+                  Start focus
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${onlyTask.title}`}
+                accessibilityState={{ disabled: isFocusNavigationPending }}
+                disabled={isFocusNavigationPending}
+                className={`min-h-12 justify-center rounded-xl border border-zinc-300 bg-white px-5 active:bg-zinc-50 ${
+                  isFocusNavigationPending ? "opacity-40" : ""
+                }`}
+                onPress={() => openTask(onlyTask)}
+              >
+                <Text className="text-center text-base font-semibold text-zinc-900">
+                  Open task
+                </Text>
+              </Pressable>
+            </View>
           </View>
         ) : selectedTask ? (
           <View className="flex-1 gap-6">
@@ -306,25 +352,55 @@ export default function TaskDuelScreen() {
             <View className="gap-3">
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Open ${selectedTask.title}`}
-                className="min-h-12 justify-center rounded-xl bg-zinc-950 px-5 active:bg-zinc-800"
-                onPress={() => openTask(selectedTask)}
+                accessibilityLabel={`Start focus on ${selectedTask.title}`}
+                accessibilityState={{ disabled: isFocusNavigationPending }}
+                disabled={isFocusNavigationPending}
+                className={`min-h-12 justify-center rounded-xl bg-zinc-950 px-5 active:bg-zinc-800 ${
+                  isFocusNavigationPending ? "opacity-40" : ""
+                }`}
+                onPress={() => startFocus(selectedTask)}
               >
                 <Text className="text-center text-base font-semibold text-white">
-                  Open task
+                  Start focus
                 </Text>
               </Pressable>
-              {hasAlternativePairs && (
+              <View
+                className={hasAlternativePairs ? "flex-row gap-3" : ""}
+              >
                 <Pressable
                   accessibilityRole="button"
-                  className="min-h-12 justify-center rounded-xl border border-zinc-300 bg-white px-5 active:bg-zinc-50"
-                  onPress={drawNewPair}
+                  accessibilityLabel={`Open ${selectedTask.title}`}
+                  accessibilityState={{ disabled: isFocusNavigationPending }}
+                  disabled={isFocusNavigationPending}
+                  className={`min-h-12 justify-center rounded-xl border border-zinc-300 bg-white px-4 active:bg-zinc-50 ${
+                    hasAlternativePairs ? "flex-1" : ""
+                  } ${
+                    isFocusNavigationPending ? "opacity-40" : ""
+                  }`}
+                  onPress={() => openTask(selectedTask)}
                 >
                   <Text className="text-center text-base font-semibold text-zinc-900">
-                    Try another pair
+                    Open task
                   </Text>
                 </Pressable>
-              )}
+                {hasAlternativePairs && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{
+                      disabled: isFocusNavigationPending,
+                    }}
+                    disabled={isFocusNavigationPending}
+                    className={`min-h-12 flex-1 justify-center rounded-xl border border-zinc-300 bg-white px-4 active:bg-zinc-50 ${
+                      isFocusNavigationPending ? "opacity-40" : ""
+                    }`}
+                    onPress={drawNewPair}
+                  >
+                    <Text className="text-center text-base font-semibold text-zinc-900">
+                      Try another pair
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
           </View>
         ) : pair ? (

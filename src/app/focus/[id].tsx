@@ -21,9 +21,13 @@ import type { Task } from "../../entities/task/model/types";
 import { createTaskRepository } from "../../entities/task/repository/task-repository";
 
 type LoadState = "loading" | "ready" | "error";
+type FocusOrigin = "roulette" | "duel";
 
 export default function FocusScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{
+    id: string;
+    from?: FocusOrigin;
+  }>();
   const db = useSQLiteContext();
   const navigation = useNavigation();
   const [task, setTask] = useState<Task | null>(null);
@@ -97,7 +101,17 @@ export default function FocusScreen() {
     });
   }, [navigation]);
 
-  function returnToTasks() {
+  function returnFromFocus() {
+    if (from === "roulette") {
+      router.dismissTo("/tools/roulette");
+      return;
+    }
+
+    if (from === "duel") {
+      router.dismissTo("/tools/duel");
+      return;
+    }
+
     router.dismissTo("/");
   }
 
@@ -122,7 +136,7 @@ export default function FocusScreen() {
 
         setTask(updatedTask);
         allowRemovalRef.current = true;
-        returnToTasks();
+        returnFromFocus();
       })
       .catch((error) => {
         console.error("Failed to complete focus task", error);
@@ -140,6 +154,12 @@ export default function FocusScreen() {
   }
 
   const isCompleted = task?.status === "done";
+  const returnLabel =
+    from === "roulette"
+      ? "Back to Task Roulette"
+      : from === "duel"
+        ? "Back to Task Duel"
+        : "Back to tasks";
 
   return (
     <>
@@ -169,11 +189,11 @@ export default function FocusScreen() {
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Return to tasks"
-                onPress={returnToTasks}
+                accessibilityLabel={returnLabel}
+                onPress={returnFromFocus}
                 className="min-h-11 justify-center px-5"
               >
-                <Text className="font-medium text-zinc-600">Back to tasks</Text>
+                <Text className="font-medium text-zinc-600">{returnLabel}</Text>
               </Pressable>
             </View>
           ) : !task ? (
@@ -186,11 +206,11 @@ export default function FocusScreen() {
               </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Return to tasks"
-                onPress={returnToTasks}
+                accessibilityLabel={returnLabel}
+                onPress={returnFromFocus}
                 className="min-h-11 justify-center rounded-xl border border-zinc-300 bg-white px-5 active:bg-zinc-100"
               >
-                <Text className="font-semibold text-zinc-800">Back to tasks</Text>
+                <Text className="font-semibold text-zinc-800">{returnLabel}</Text>
               </Pressable>
             </View>
           ) : (
@@ -274,7 +294,7 @@ export default function FocusScreen() {
                   accessibilityLabel="Exit focus"
                   accessibilityState={{ disabled: completionSaving }}
                   disabled={completionSaving}
-                  onPress={returnToTasks}
+                  onPress={returnFromFocus}
                   className={`min-h-12 items-center justify-center rounded-xl px-5 active:bg-zinc-100 ${
                     completionSaving ? "opacity-40" : ""
                   }`}
