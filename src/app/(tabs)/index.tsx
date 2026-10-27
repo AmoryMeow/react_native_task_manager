@@ -445,6 +445,7 @@ export default function HomeScreen() {
 
           <View className="mb-3 flex-row gap-2">
             <TextInput
+              accessibilityLabel="New task title"
               className="h-11 flex-1 rounded-xl border border-zinc-300 bg-white px-3.5 text-base text-zinc-950"
               value={title}
               onChangeText={setTitle}

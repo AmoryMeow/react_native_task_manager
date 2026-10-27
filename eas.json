@@ -1,0 +1,14 @@
+{
+  "build": {
+    "e2e-test": {
+      "environment": "preview",
+      "withoutCredentials": true,
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    }
+  }
+}

@@ -6,6 +6,12 @@
     "orientation": "portrait",
     "scheme": "reactnativetaskmanager",
     "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.amorymeow.reactnativetaskmanager"
+    },
+    "android": {
+      "package": "com.amorymeow.reactnativetaskmanager"
+    },
     "web": {
       "bundler": "metro",
       "output": "server"

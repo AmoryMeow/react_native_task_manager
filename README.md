@@ -73,6 +73,7 @@ first and organized with as much—or as little—detail as needed.
 - React Native Gesture Handler and Reanimated
 - Jest and jest-expo
 - Playwright
+- Maestro
 
 ## Getting started
 
@@ -130,6 +131,33 @@ To open the last HTML report:
 npm run test:e2e:report
 ```
 
+### Native end-to-end tests
+
+Maestro smoke tests cover the native task flow on an iOS Simulator. Android is
+prepared through the same EAS build profile, but it is not part of the workflow
+yet.
+
+For local testing, install Xcode with an iOS Simulator and the
+[Maestro CLI](https://docs.maestro.dev/getting-started/installing-maestro). Build
+and launch the native app, then run the flows:
+
+```bash
+npx expo run:ios
+maestro test .maestro/launch-and-navigation.yml
+maestro test .maestro/task-creation-and-persistence.yml
+```
+
+The cloud workflow is manual-only and builds a standalone iOS Simulator app
+before running both flows:
+
+```bash
+npx eas-cli@latest workflow:run .eas/workflows/mobile-e2e.yml
+```
+
+Hosted Maestro jobs require a paid Expo plan. Cloud runs also consume EAS Build
+and Workflow usage, so check the account's current quota under **Billing →
+Usage** in the Expo dashboard before triggering one.
+
 ## CI/CD
 
 GitHub Actions runs TypeScript validation, ESLint, unit tests, a production web
@@ -151,3 +179,6 @@ recommended for the production environment.
 The deployment URL is printed in the workflow log and is also available in the
 project's EAS Hosting deployments. Commits and pull requests never trigger a
 deployment automatically.
+
+Native mobile E2E is also manual and runs separately on EAS Workflows. It does
+not run on pushes, pull requests, or web deployments.

@@ -1,0 +1,11 @@
+appId: com.amorymeow.reactnativetaskmanager
+---
+- launchApp:
+    clearState: true
+- assertVisible: My Tasks
+- tapOn: Tools tab
+- assertVisible: Simple ways to choose a task and stay focused.
+- tapOn: Settings tab
+- assertVisible: Settings will be added here as the app develops.
+- tapOn: Tasks tab
+- assertVisible: My Tasks

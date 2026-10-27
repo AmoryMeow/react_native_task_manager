@@ -1,0 +1,22 @@
+name: Mobile E2E — iOS Simulator
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build_ios_for_e2e:
+    name: Build iOS Simulator app
+    type: build
+    params:
+      platform: ios
+      profile: e2e-test
+
+  maestro_tests:
+    name: Run Maestro tests
+    needs: [build_ios_for_e2e]
+    type: maestro
+    params:
+      build_id: ${{ needs.build_ios_for_e2e.outputs.build_id }}
+      flow_path:
+        - .maestro/launch-and-navigation.yml
+        - .maestro/task-creation-and-persistence.yml

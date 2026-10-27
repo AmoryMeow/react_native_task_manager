@@ -1,0 +1,12 @@
+appId: com.amorymeow.reactnativetaskmanager
+---
+- launchApp:
+    clearState: true
+- assertVisible: My Tasks
+- tapOn: New task title
+- inputText: Maestro persistence task
+- tapOn: Add task
+- assertVisible: Maestro persistence task
+- stopApp
+- launchApp
+- assertVisible: Maestro persistence task

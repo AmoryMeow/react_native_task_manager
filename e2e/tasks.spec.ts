@@ -22,7 +22,7 @@ async function createTask(page: Page, title: string) {
 async function openOnlyTask(page: Page) {
   await page.getByRole("button", { name: "Open task details" }).click();
   await expect(page.getByText("Task details", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Task title")).toBeVisible();
+  await expect(page.getByLabel("Task title", { exact: true })).toBeVisible();
 }
 
 test("creates a task and persists it after reload", async ({ page }) => {
@@ -45,7 +45,7 @@ test("persists title and description edits", async ({ page }) => {
   await createTask(page, originalTitle);
   await openOnlyTask(page);
 
-  await page.getByLabel("Task title").fill(editedTitle);
+  await page.getByLabel("Task title", { exact: true }).fill(editedTitle);
   await page.getByLabel("Task description").fill(description);
   await page.getByRole("button", { name: "Done" }).click();
 
@@ -53,12 +53,16 @@ test("persists title and description edits", async ({ page }) => {
   await expect(page.getByLabel(`Edit ${editedTitle}`)).toBeVisible();
 
   await openOnlyTask(page);
-  await expect(page.getByLabel("Task title")).toHaveValue(editedTitle);
+  await expect(page.getByLabel("Task title", { exact: true })).toHaveValue(
+    editedTitle,
+  );
   await expect(page.getByLabel("Task description")).toHaveValue(description);
 
   await page.reload();
   await expect(page.getByText("Task details", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Task title")).toHaveValue(editedTitle);
+  await expect(page.getByLabel("Task title", { exact: true })).toHaveValue(
+    editedTitle,
+  );
   await expect(page.getByLabel("Task description")).toHaveValue(description);
 });
 
