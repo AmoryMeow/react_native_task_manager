@@ -66,6 +66,30 @@ test("persists title and description edits", async ({ page }) => {
   await expect(page.getByLabel("Task description")).toHaveValue(description);
 });
 
+test("autosaves title and description while editing remains in Task Details", async ({
+  page,
+}) => {
+  const originalTitle = "E2E autosave task";
+  const editedTitle = "E2E autosaved title";
+  const description = "Saved after the debounce delay.";
+
+  await openTaskList(page);
+  await createTask(page, originalTitle);
+  await openOnlyTask(page);
+
+  await page.getByLabel("Task title", { exact: true }).fill(editedTitle);
+  await page.waitForTimeout(800);
+  await page.reload();
+  await expect(page.getByLabel("Task title", { exact: true })).toHaveValue(
+    editedTitle,
+  );
+
+  await page.getByLabel("Task description").fill(description);
+  await page.waitForTimeout(800);
+  await page.reload();
+  await expect(page.getByLabel("Task description")).toHaveValue(description);
+});
+
 test("opens Focus Mode, preserves edits, and completes the task", async ({
   page,
 }) => {

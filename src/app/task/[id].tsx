@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, type ReactElement } from "react";
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Keyboard,
   Platform,
   Pressable,
@@ -26,6 +27,7 @@ import {
 } from "../../entities/task/lib/format-task-schedule";
 import type { Task, TaskSchedule } from "../../entities/task/model/types";
 import { createTaskRepository } from "../../entities/task/repository/task-repository";
+import { createDebouncedAction } from "../../shared/lib/debounced-action";
 import { CalendarDatePicker } from "../../shared/ui/date-picker/calendar-date-picker";
 import { CalendarIcon } from "../../shared/ui/icons/calendar-icon";
 import { ChevronIcon } from "../../shared/ui/icons/chevron-icon";
@@ -43,6 +45,7 @@ const scheduleOptions: { label: string; value: ScheduleOption }[] = [
 
 const DEFAULT_SHEET_DETENTS = [0.5, 0.9];
 const EXPANDED_SHEET_DETENTS = [0.9];
+const TEXT_AUTOSAVE_DELAY_MS = 500;
 
 function DismissKeyboardOnPress({ children }: { children: ReactElement }) {
   if (Platform.OS === "web") return children;
@@ -210,6 +213,12 @@ export default function TaskDetailsScreen() {
   const [focusedField, setFocusedField] = useState<
     "title" | "description" | null
   >(null);
+  const [titleAutosave] = useState(() =>
+    createDebouncedAction(TEXT_AUTOSAVE_DELAY_MS),
+  );
+  const [descriptionAutosave] = useState(() =>
+    createDebouncedAction(TEXT_AUTOSAVE_DELAY_MS),
+  );
   const contentScrollRef = useRef<ScrollView>(null);
   const descriptionInputRef = useRef<TextInput>(null);
   const titleSavePromiseRef = useRef<Promise<boolean> | null>(null);
@@ -229,9 +238,11 @@ export default function TaskDetailsScreen() {
     isMountedRef.current = true;
 
     return () => {
+      titleAutosave.cancel();
+      descriptionAutosave.cancel();
       isMountedRef.current = false;
     };
-  }, []);
+  }, [descriptionAutosave, titleAutosave]);
 
   useEffect(() => {
     let active = true;
@@ -296,6 +307,7 @@ export default function TaskDetailsScreen() {
       let followedFailedSave = false;
 
       while (true) {
+        titleAutosave.cancel();
         const titleToSave = titleDraftRef.current.trim();
 
         if (!titleToSave) return false;
@@ -330,6 +342,7 @@ export default function TaskDetailsScreen() {
           }
 
           if (titleDraftRef.current.trim() === updatedTask.title) {
+            titleAutosave.cancel();
             titleDraftRef.current = updatedTask.title;
             if (isMountedRef.current) {
               setTitle(updatedTask.title);
@@ -348,6 +361,7 @@ export default function TaskDetailsScreen() {
             followedFailedSave ||
             titleDraftRef.current.trim() === titleToSave
           ) {
+            titleAutosave.cancel();
             return false;
           }
 
@@ -380,6 +394,7 @@ export default function TaskDetailsScreen() {
       let followedFailedSave = false;
 
       while (true) {
+        descriptionAutosave.cancel();
         const descriptionToSave = descriptionDraftRef.current;
 
         if (descriptionToSave === savedDescriptionRef.current) {
@@ -406,6 +421,7 @@ export default function TaskDetailsScreen() {
           }
 
           if (descriptionDraftRef.current === descriptionToSave) {
+            descriptionAutosave.cancel();
             if (isMountedRef.current) {
               setDescriptionSaveError(null);
             }
@@ -422,6 +438,7 @@ export default function TaskDetailsScreen() {
             followedFailedSave ||
             descriptionDraftRef.current === descriptionToSave
           ) {
+            descriptionAutosave.cancel();
             return false;
           }
 
@@ -440,6 +457,9 @@ export default function TaskDetailsScreen() {
   }
 
   async function saveChanges(): Promise<boolean> {
+    titleAutosave.cancel();
+    descriptionAutosave.cancel();
+
     if (!titleDraftRef.current.trim()) {
       return false;
     }
@@ -449,6 +469,17 @@ export default function TaskDetailsScreen() {
 
     return titleSaved && descriptionSaved;
   }
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") return;
+
+      titleAutosave.flush();
+      descriptionAutosave.flush();
+    });
+
+    return () => subscription.remove();
+  }, [descriptionAutosave, titleAutosave]);
 
   async function saveAndDismiss(dismiss: () => void) {
     if (closePromiseRef.current) return closePromiseRef.current;
@@ -831,11 +862,16 @@ export default function TaskDetailsScreen() {
                           descriptionDraftRef.current !==
                             savedDescriptionRef.current,
                       );
+                      titleAutosave.schedule(() => {
+                        void saveTitle();
+                      });
                     }}
                     onFocus={() => setFocusedField("title")}
                     onBlur={() => {
                       setFocusedField(null);
-                      void saveTitle();
+                      if (!titleAutosave.flush()) {
+                        void saveTitle();
+                      }
                     }}
                     onSubmitEditing={() => descriptionInputRef.current?.focus()}
                     editable={!isBusy}
@@ -867,7 +903,10 @@ export default function TaskDetailsScreen() {
                       accessibilityRole="button"
                       accessibilityLabel="Retry saving task title"
                       disabled={titleSaving || saving}
-                      onPress={() => void saveTitle()}
+                      onPress={() => {
+                        titleAutosave.cancel();
+                        void saveTitle();
+                      }}
                       className="rounded-md px-2 py-1 active:bg-zinc-100"
                     >
                       <Text className="text-xs font-semibold text-blue-600">
@@ -894,11 +933,16 @@ export default function TaskDetailsScreen() {
                       titleDraftRef.current.trim() !== savedTitleRef.current ||
                         value !== savedDescriptionRef.current,
                     );
+                    descriptionAutosave.schedule(() => {
+                      void saveDescription();
+                    });
                   }}
                   onFocus={() => setFocusedField("description")}
                   onBlur={() => {
                     setFocusedField(null);
-                    void saveDescription();
+                    if (!descriptionAutosave.flush()) {
+                      void saveDescription();
+                    }
                   }}
                   editable={!isBusy}
                   placeholder="Add description..."
@@ -924,7 +968,10 @@ export default function TaskDetailsScreen() {
                       accessibilityRole="button"
                       accessibilityLabel="Retry saving task description"
                       disabled={descriptionSaving || saving}
-                      onPress={() => void saveDescription()}
+                      onPress={() => {
+                        descriptionAutosave.cancel();
+                        void saveDescription();
+                      }}
                       className="rounded-md px-2 py-1 active:bg-zinc-100"
                     >
                       <Text className="text-xs font-semibold text-blue-600">
