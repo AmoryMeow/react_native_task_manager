@@ -216,7 +216,7 @@ export default function TaskDuelScreen() {
     shouldPreserveSelectionOnReturnRef.current = true;
     router.push({
       pathname: "/task/[id]",
-      params: { id: task.id },
+      params: { id: task.id, from: "duel" },
     });
   };
 

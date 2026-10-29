@@ -130,6 +130,26 @@ test("opens Focus Mode, preserves edits, and completes the task", async ({
   await expect(page.getByRole("checkbox", { name: "✓" })).toBeVisible();
 });
 
+test("uses Tasks as the fallback for a direct Focus route with an invalid origin", async ({
+  page,
+}) => {
+  const title = "E2E direct focus task";
+
+  await openTaskList(page);
+  await createTask(page, title);
+  await openOnlyTask(page);
+
+  const taskId = new URL(page.url()).pathname.split("/").at(-1);
+  expect(taskId).toBeTruthy();
+
+  await page.goto(`/focus/${taskId}?from=https%3A%2F%2Fexample.com`);
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await page.getByRole("button", { name: "Exit focus" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
+});
+
 test("persists exact local schedule and deadline dates", async ({ page }) => {
   const title = "E2E dated task";
   const scheduleDate = "2030-06-15";

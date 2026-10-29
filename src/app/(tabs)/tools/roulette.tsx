@@ -350,7 +350,7 @@ export default function TaskRouletteScreen() {
 
     router.push({
       pathname: "/task/[id]",
-      params: { id: selectedTask.id },
+      params: { id: selectedTask.id, from: "roulette" },
     });
   };
 

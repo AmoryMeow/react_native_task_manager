@@ -19,15 +19,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { Task } from "../../entities/task/model/types";
 import { createTaskRepository } from "../../entities/task/repository/task-repository";
+import { parseFocusOrigin } from "../../features/task-focus/lib/focus-origin";
 
 type LoadState = "loading" | "ready" | "error";
-type FocusOrigin = "roulette" | "duel" | "tools";
 
 export default function FocusScreen() {
-  const { id, from } = useLocalSearchParams<{
+  const { id, from: fromParam } = useLocalSearchParams<{
     id: string;
-    from?: FocusOrigin;
+    from?: string | string[];
   }>();
+  const from = parseFocusOrigin(fromParam);
   const db = useSQLiteContext();
   const navigation = useNavigation();
   const [task, setTask] = useState<Task | null>(null);

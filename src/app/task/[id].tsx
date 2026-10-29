@@ -27,6 +27,7 @@ import {
 } from "../../entities/task/lib/format-task-schedule";
 import type { Task, TaskSchedule } from "../../entities/task/model/types";
 import { createTaskRepository } from "../../entities/task/repository/task-repository";
+import { parseFocusOrigin } from "../../features/task-focus/lib/focus-origin";
 import { createDebouncedAction } from "../../shared/lib/debounced-action";
 import { CalendarDatePicker } from "../../shared/ui/date-picker/calendar-date-picker";
 import { CalendarIcon } from "../../shared/ui/icons/calendar-icon";
@@ -187,7 +188,11 @@ function InlineDatePicker({
 }
 
 export default function TaskDetailsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{
+    id: string;
+    from?: string | string[];
+  }>();
+  const focusOrigin = parseFocusOrigin(from);
   const db = useSQLiteContext();
   const navigation = useNavigation();
 
@@ -543,7 +548,9 @@ export default function TaskDetailsScreen() {
     void saveAndDismiss(() => {
       router.replace({
         pathname: "/focus/[id]",
-        params: { id: taskId },
+        params: focusOrigin
+          ? { id: taskId, from: focusOrigin }
+          : { id: taskId },
       });
     });
   }
