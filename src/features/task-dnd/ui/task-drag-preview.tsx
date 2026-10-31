@@ -50,11 +50,11 @@ export function TaskDragPreview({ showSchedule, task }: TaskDragPreviewProps) {
         ) : null}
       </View>
 
-      <View className="h-full w-9 items-center justify-center border-l border-zinc-100">
+      <View className="h-full w-11 items-center justify-center border-l border-zinc-100">
         <Text className="text-lg text-zinc-400">×</Text>
       </View>
 
-      <View className="h-full w-8 items-center justify-center">
+      <View className="h-full w-11 items-center justify-center">
         <TaskDragHandleDots />
       </View>
     </View>

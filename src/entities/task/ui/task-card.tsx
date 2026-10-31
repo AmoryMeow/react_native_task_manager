@@ -124,7 +124,7 @@ export function TaskCard({
 
   return (
     <View
-      className={`mb-2 min-h-14 flex-row items-center overflow-hidden rounded-xl border border-zinc-200 bg-white ${
+      className={`mb-2 h-14 flex-row items-center overflow-hidden rounded-xl border border-zinc-200 bg-white ${
         isUpdating ? "opacity-50" : ""
       }`}
     >
@@ -153,7 +153,7 @@ export function TaskCard({
         <TextInput
           ref={titleInputRef}
           accessibilityLabel={isEditing ? "Task title" : `Edit ${task.title}`}
-          className={`min-h-6 p-0 text-sm leading-5 ${
+          className={`h-6 p-0 text-sm leading-5 ${
             isEditing
               ? "font-medium text-zinc-950"
               : isDone
