@@ -25,6 +25,11 @@ import {
   formatTaskSchedule,
   toLocalDateString,
 } from "../../entities/task/lib/format-task-schedule";
+import {
+  createTaskLoader,
+  type TaskLoader,
+  type TaskLoadState,
+} from "../../entities/task/lib/task-loader";
 import type { Task, TaskSchedule } from "../../entities/task/model/types";
 import { createTaskRepository } from "../../entities/task/repository/task-repository";
 import { parseFocusOrigin } from "../../features/task-focus/lib/focus-origin";
@@ -188,10 +193,15 @@ function InlineDatePicker({
 }
 
 export default function TaskDetailsScreen() {
-  const { id, from } = useLocalSearchParams<{
-    id: string;
-    from?: string | string[];
-  }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  // Remount per task so drafts, save queues and dismissal guards never carry
+  // over to a different task when the route's id changes.
+  return <TaskDetailsContent key={id} id={id} />;
+}
+
+function TaskDetailsContent({ id }: { id: string }) {
+  const { from } = useLocalSearchParams<{ from?: string | string[] }>();
   const focusOrigin = parseFocusOrigin(from);
   const db = useSQLiteContext();
   const navigation = useNavigation();
@@ -199,7 +209,10 @@ export default function TaskDetailsScreen() {
   const [task, setTask] = useState<Task | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loadState, setLoadState] = useState<TaskLoadState>({
+    status: "loading",
+    taskId: id,
+  });
   const [saving, setSaving] = useState(false);
   const [hasUnsavedTextChanges, setHasUnsavedTextChanges] = useState(false);
   const [titleSaving, setTitleSaving] = useState(false);
@@ -234,6 +247,8 @@ export default function TaskDetailsScreen() {
   const closePromiseRef = useRef<Promise<void> | null>(null);
   const allowRemovalRef = useRef(false);
   const isMountedRef = useRef(true);
+  const taskLoaderRef = useRef<TaskLoader | null>(null);
+  const hasHydratedDraftsRef = useRef(false);
   const titleDraftRef = useRef("");
   const descriptionDraftRef = useRef("");
   const savedTitleRef = useRef("");
@@ -250,41 +265,52 @@ export default function TaskDetailsScreen() {
   }, [descriptionAutosave, titleAutosave]);
 
   useEffect(() => {
-    let active = true;
+    const repository = createTaskRepository(db);
+    const loader = createTaskLoader({
+      fetchTask: (taskId) => repository.getTaskById(taskId),
+      onError: (error, taskId) => {
+        console.error(`Failed to load task ${taskId}`, error);
+      },
+      onStateChange: (state) => {
+        if (state.status === "ready") {
+          setTask(state.task);
 
-    async function loadTask() {
-      try {
-        const repository = createTaskRepository(db);
-        const result = await repository.getTaskById(id);
+          // Only seed the drafts once; a later reload of the same task must
+          // not overwrite edits the user has already made.
+          if (!hasHydratedDraftsRef.current) {
+            hasHydratedDraftsRef.current = true;
+            const loadedTitle = state.task.title;
+            const loadedDescription = state.task.description ?? "";
 
-        if (active) {
-          setTask(result);
-          const loadedTitle = result?.title ?? "";
-          const loadedDescription = result?.description ?? "";
-
-          setTitle(loadedTitle);
-          setDescription(loadedDescription);
-          titleDraftRef.current = loadedTitle;
-          descriptionDraftRef.current = loadedDescription;
-          savedTitleRef.current = loadedTitle;
-          savedDescriptionRef.current = loadedDescription;
-          setHasUnsavedTextChanges(false);
+            setTitle(loadedTitle);
+            setDescription(loadedDescription);
+            titleDraftRef.current = loadedTitle;
+            descriptionDraftRef.current = loadedDescription;
+            savedTitleRef.current = loadedTitle;
+            savedDescriptionRef.current = loadedDescription;
+            setHasUnsavedTextChanges(false);
+          }
         }
-      } catch (error) {
-        console.error("Failed to load task", error);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
 
-    void loadTask();
+        setLoadState(state);
+      },
+    });
+
+    taskLoaderRef.current = loader;
+    void loader.load(id);
 
     return () => {
-      active = false;
+      loader.dispose();
+      if (taskLoaderRef.current === loader) {
+        taskLoaderRef.current = null;
+      }
     };
   }, [db, id]);
+
+  function retryLoadTask() {
+    // The loader joins an in-flight read, so repeated taps stay one request.
+    void taskLoaderRef.current?.load(id);
+  }
 
   function updateUnsavedTextState() {
     if (!isMountedRef.current) return;
@@ -488,6 +514,12 @@ export default function TaskDetailsScreen() {
 
   async function saveAndDismiss(dismiss: () => void) {
     if (closePromiseRef.current) return closePromiseRef.current;
+
+    if (!task) {
+      // Nothing was loaded (loading, not found, or failed), so nothing to save.
+      dismiss();
+      return;
+    }
 
     if (!titleDraftRef.current.trim()) {
       Alert.alert("Title required", "Task title cannot be empty.");
@@ -816,9 +848,27 @@ export default function TaskDetailsScreen() {
             </Pressable>
           </View>
 
-          {loading ? (
+          {loadState.status === "loading" ? (
             <ActivityIndicator />
-          ) : task ? (
+          ) : loadState.status === "error" ? (
+            <View accessibilityLiveRegion="polite" className="items-start gap-3">
+              <Text className="text-base font-semibold text-zinc-900">
+                Couldn&apos;t load this task
+              </Text>
+              <Text className="text-sm text-zinc-500">
+                Something went wrong while reading it from storage. Please try
+                again.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading task"
+                onPress={retryLoadTask}
+                className="rounded-lg bg-zinc-950 px-4 py-2.5 active:bg-zinc-700"
+              >
+                <Text className="text-sm font-semibold text-white">Retry</Text>
+              </Pressable>
+            </View>
+          ) : loadState.status === "ready" && task ? (
             <ScrollView
               ref={contentScrollRef}
               keyboardShouldPersistTaps="handled"

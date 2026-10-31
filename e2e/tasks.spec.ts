@@ -36,6 +36,23 @@ test("creates a task and persists it after reload", async ({ page }) => {
   await expect(page.getByLabel(`Edit ${title}`)).toBeVisible();
 });
 
+test("shows Task not found for a direct URL to a missing task", async ({
+  page,
+}) => {
+  await openTaskList(page);
+  await page.goto("/task/missing-task-id");
+
+  await expect(page.getByText("Task details", { exact: true })).toBeVisible();
+  await expect(page.getByText("Task not found")).toBeVisible();
+  await expect(page.getByText("Couldn't load this task")).toBeHidden();
+
+  await page.reload();
+  await expect(page.getByText("Task not found")).toBeVisible();
+
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
+});
+
 test("persists title and description edits", async ({ page }) => {
   const originalTitle = "E2E editable task";
   const editedTitle = "E2E edited task";
