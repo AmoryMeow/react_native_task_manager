@@ -67,6 +67,15 @@ first and organized with as much—or as little—detail as needed.
   date. Moving changes only the task's schedule; its deadline and completion
   status stay unchanged. Other tasks exit Focus Mode directly.
 
+### In development: focus session tracking
+
+The local database can now record focus sessions (start, pause, resume, end)
+so time spent focusing can later be shown per task. Only active time counts;
+paused time is excluded, and durations are calculated from stored timestamps,
+so they stay correct if the app is closed. Sessions are kept even when their
+task is deleted. This is not connected to Focus Mode yet: no sessions are
+recorded and no timer is shown.
+
 ## Tech stack
 
 - React Native and Expo
