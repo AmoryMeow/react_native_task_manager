@@ -125,16 +125,32 @@ export function resumeFocusSession(
 export function endFocusSession(
   session: FocusSession,
   now: number,
+  correctedFocusMs?: number,
 ): FocusSession {
-  if (session.status === "completed") return session;
+  if (session.status === "completed") {
+    if (correctedFocusMs === undefined) return session;
+    throw new FocusSessionTransitionError(session.id, session.status, "end");
+  }
 
   const at = monotonicNow(session, now);
+  const calculatedMs = closeActiveSegment(session, at);
+
+  if (
+    correctedFocusMs !== undefined &&
+    (!Number.isSafeInteger(correctedFocusMs) ||
+      correctedFocusMs < 0 ||
+      correctedFocusMs > calculatedMs)
+  ) {
+    throw new RangeError(
+      `Corrected focus time must be between 0 and ${calculatedMs} ms`,
+    );
+  }
 
   return {
     ...session,
     status: "completed",
     endedAt: at,
-    accumulatedMs: closeActiveSegment(session, at),
+    accumulatedMs: correctedFocusMs ?? calculatedMs,
     activeSegmentStartedAt: null,
     updatedAt: at,
   };

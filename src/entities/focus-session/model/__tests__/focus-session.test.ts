@@ -149,3 +149,54 @@ describe("app termination and clock changes", () => {
     );
   });
 });
+
+describe("ending with a corrected duration", () => {
+  test("records the corrected time and keeps the real end time", () => {
+    const session = endFocusSession(start(), T0 + 300 * MINUTE, 90 * MINUTE);
+
+    expect(session).toMatchObject({
+      status: "completed",
+      endedAt: T0 + 300 * MINUTE,
+      accumulatedMs: 90 * MINUTE,
+    });
+    expect(getElapsedMs(session, T0 + 400 * MINUTE)).toBe(300 * MINUTE);
+  });
+
+  test("accepts zero and the full calculated time", () => {
+    expect(endFocusSession(start(), T0 + 10 * MINUTE, 0).accumulatedMs).toBe(0);
+    expect(
+      endFocusSession(start(), T0 + 10 * MINUTE, 10 * MINUTE).accumulatedMs,
+    ).toBe(10 * MINUTE);
+  });
+
+  test("limits a paused session to its recorded time", () => {
+    const paused = pauseFocusSession(start(), T0 + 20 * MINUTE);
+
+    expect(() =>
+      endFocusSession(paused, T0 + 300 * MINUTE, 21 * MINUTE),
+    ).toThrow(RangeError);
+    expect(
+      endFocusSession(paused, T0 + 300 * MINUTE, 15 * MINUTE).accumulatedMs,
+    ).toBe(15 * MINUTE);
+  });
+
+  test.each([
+    ["longer than calculated", 10 * MINUTE + 1],
+    ["negative", -1],
+    ["fractional", 1.5],
+    ["not a number", Number.NaN],
+  ])("rejects a correction that is %s", (_label, corrected) => {
+    expect(() => endFocusSession(start(), T0 + 10 * MINUTE, corrected)).toThrow(
+      RangeError,
+    );
+  });
+
+  test("never changes a completed session", () => {
+    const ended = endFocusSession(start(), T0 + 10 * MINUTE);
+
+    expect(() => endFocusSession(ended, T0 + 20 * MINUTE, MINUTE)).toThrow(
+      FocusSessionTransitionError,
+    );
+    expect(endFocusSession(ended, T0 + 20 * MINUTE)).toBe(ended);
+  });
+});

@@ -71,11 +71,22 @@ first and organized with as much—or as little—detail as needed.
   actually spent focusing (HH:MM:SS); Pause and Resume exclude paused time.
   Time is calculated from timestamps stored on the device, so it stays correct
   after backgrounding, locking the screen, reloading, or closing the app, and
-  reopening the same task continues the same session. Exit focus, completing
-  the task, or leaving with Back ends the session. Only one session can be open
-  at a time: opening Focus Mode for a different task offers to return to the
-  open session or end it first. Recorded sessions are kept for future
-  statistics, which are not available yet.
+  reopening the same task continues the same session. Exit focus or completing
+  the task ends the session. The back button in the header returns to the
+  previous screen without ending or pausing it; system and browser Back do the
+  same. Only one session can be open at a time: opening Focus Mode for a
+  different task offers to return to the open session or end it first.
+  Recorded sessions are kept for future statistics, which are not available
+  yet.
+- If you leave Focus Mode or the app is closed during focus, the Tasks screen
+  shows the unfinished session: its task, whether it is active or paused, the
+  focused time, and when it started. Resume focus reopens the same session (a
+  paused session stays paused); End session ends it without changing the task.
+  The app always opens on Tasks and never jumps into Focus Mode on its own.
+  Sessions with more than 4 hours of recorded time ask you to review the time
+  before ending, so you can keep it or lower it if you were away; the time is
+  never reduced automatically. A session whose task was deleted can still be
+  ended.
 
 ## Tech stack
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   KeyboardAvoidingView,
@@ -31,6 +31,8 @@ import {
   TASK_GROUP_IDS,
 } from "@/features/task-dnd/model/task-drag";
 import { useTaskDragController } from "@/features/task-dnd/model/use-task-drag-controller";
+import { useFocusRecovery } from "@/features/task-focus/model/use-focus-recovery";
+import { FocusRecoveryCard } from "@/features/task-focus/ui/focus-recovery-card";
 import { DraggableTaskCard } from "@/features/task-dnd/ui/draggable-task-card";
 import { DropTargetSectionHeader } from "@/features/task-dnd/ui/drop-target-section-header";
 import { TaskDragPreview } from "@/features/task-dnd/ui/task-drag-preview";
@@ -84,6 +86,11 @@ function toTaskSchedule(option: ScheduleOption): TaskSchedule {
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
+  const {
+    recovery: focusRecovery,
+    reload: reloadFocusRecovery,
+    endSession: endRecoveredSession,
+  } = useFocusRecovery(db);
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -123,6 +130,10 @@ export default function HomeScreen() {
   };
 
   const remainingTasks = tasks.filter((task) => task.status !== "done").length;
+
+  useEffect(() => {
+    void reloadFocusRecovery();
+  }, [tasks, reloadFocusRecovery]);
 
   const sections = useMemo<TaskSection[]>(
     () =>
@@ -446,6 +457,17 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
+
+          {focusRecovery && (
+            <FocusRecoveryCard
+              key={focusRecovery.session.id}
+              recovery={focusRecovery}
+              onResume={(taskId) =>
+                router.push({ pathname: "/focus/[id]", params: { id: taskId } })
+              }
+              onEnd={endRecoveredSession}
+            />
+          )}
 
           <View className="mb-3 flex-row gap-2">
             <TextInput

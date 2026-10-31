@@ -11,7 +11,6 @@ import {
   AccessibilityInfo,
   ActivityIndicator,
   AppState,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -75,7 +74,6 @@ export default function FocusScreen() {
   const controllerRef = useRef<FocusSessionController | null>(null);
   const finishingRef = useRef(false);
   const allowRemovalRef = useRef(false);
-  const pendingRemovalRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -83,18 +81,6 @@ export default function FocusScreen() {
     return () => {
       isMountedRef.current = false;
       loadRequestRef.current += 1;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS !== "web") return;
-
-    return () => {
-      if (allowRemovalRef.current || finishingRef.current) return;
-
-      controllerRef.current?.finish().catch((error) => {
-        console.error("Failed to end focus after browser navigation", error);
-      });
     };
   }, []);
 
@@ -231,11 +217,7 @@ export default function FocusScreen() {
 
   function leave() {
     allowRemovalRef.current = true;
-    const continueRemoval = pendingRemovalRef.current;
-    pendingRemovalRef.current = null;
-
-    if (continueRemoval) continueRemoval();
-    else returnFromFocus();
+    returnFromFocus();
   }
 
   function finishFocus(kind: FinishKind, alsoWrite?: () => Promise<void>) {
@@ -363,16 +345,11 @@ export default function FocusScreen() {
 
   useEffect(() => {
     return navigation.addListener("beforeRemove", (event) => {
-      if (allowRemovalRef.current) return;
-      if (!finishingRef.current && !hasUnfinishedSession) return;
+      if (allowRemovalRef.current || !finishingRef.current) return;
 
       event.preventDefault();
-      if (finishingRef.current) return;
-
-      pendingRemovalRef.current = () => navigation.dispatch(event.data.action);
-      exitFocus();
     });
-  });
+  }, [navigation]);
 
   const isFinishing = finishKind !== null;
   const isSessionBusy = sessionSnapshot.pending !== null;
@@ -385,6 +362,14 @@ export default function FocusScreen() {
     isTomorrowPromptOpen && tomorrowSuggestion !== null;
   const keepLabel =
     tomorrowSuggestion === "overdue" ? "Keep current date" : "Keep for today";
+  const backTitle =
+    from === "roulette"
+      ? "Task Roulette"
+      : from === "duel"
+        ? "Task Duel"
+        : from === "tools"
+          ? "Focus Mode"
+          : "Tasks";
   const returnLabel =
     from === "roulette"
       ? "Back to Task Roulette"
@@ -415,10 +400,13 @@ export default function FocusScreen() {
   return (
     <>
       <Stack.Screen
-        options={{ gestureEnabled: !hasUnfinishedSession && !isFinishing }}
+        options={{ gestureEnabled: !isFinishing, headerBackTitle: backTitle }}
       />
 
-      <SafeAreaView className="flex-1 bg-zinc-50">
+      <SafeAreaView
+        edges={["bottom", "left", "right"]}
+        className="flex-1 bg-zinc-50"
+      >
         <View className="flex-1 px-6 py-5">
           {loadState === "loading" ? (
             <View className="flex-1 items-center justify-center">

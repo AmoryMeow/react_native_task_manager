@@ -6,6 +6,10 @@ import { migrateDb } from "../shared/db/migrations";
 
 import "../global.css";
 
+export const unstable_settings = {
+  anchor: "(tabs)",
+};
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -26,7 +30,10 @@ export default function RootLayout() {
             name="focus/[id]"
             options={{
               presentation: "card",
-              headerShown: false,
+              title: "",
+              headerShadowVisible: false,
+              headerStyle: { backgroundColor: "#fafafa" },
+              headerTintColor: "#18181b",
             }}
           />
         </Stack>

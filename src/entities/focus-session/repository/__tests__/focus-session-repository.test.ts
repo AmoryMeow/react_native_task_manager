@@ -298,3 +298,44 @@ describe("database invariants", () => {
     ).rejects.toThrow(/UNIQUE constraint failed/);
   });
 });
+
+describe("ending with a corrected duration", () => {
+  test("persists the corrected time", async () => {
+    const { id } = await repository.startSession("task-a", T0);
+
+    await repository.endSession(id, T0 + 300 * MINUTE, {
+      correctedFocusMs: 45 * MINUTE,
+    });
+
+    expect(await repository.getSession(id)).toMatchObject({
+      status: "completed",
+      endedAt: T0 + 300 * MINUTE,
+      accumulatedMs: 45 * MINUTE,
+    });
+  });
+
+  test("an invalid correction leaves the session unfinished", async () => {
+    const started = await repository.startSession("task-a", T0);
+
+    await expect(
+      repository.endSession(started.id, T0 + 10 * MINUTE, {
+        correctedFocusMs: 11 * MINUTE,
+      }),
+    ).rejects.toBeInstanceOf(RangeError);
+
+    expect(await repository.getUnfinishedSession()).toEqual(started);
+  });
+
+  test("a completed session cannot be corrected afterwards", async () => {
+    const { id } = await repository.startSession("task-a", T0);
+    const ended = await repository.endSession(id, T0 + 10 * MINUTE);
+
+    await expect(
+      repository.endSession(id, T0 + 20 * MINUTE, {
+        correctedFocusMs: MINUTE,
+      }),
+    ).rejects.toBeInstanceOf(FocusSessionTransitionError);
+
+    expect(await repository.getSession(id)).toEqual(ended);
+  });
+});

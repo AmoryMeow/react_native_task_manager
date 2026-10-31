@@ -213,8 +213,14 @@ export function createFocusSessionRepository(
       );
     },
 
-    endSession(sessionId: string, now: number = Date.now()) {
-      return transition(sessionId, (session) => endFocusSession(session, now));
+    endSession(
+      sessionId: string,
+      now: number = Date.now(),
+      { correctedFocusMs }: { correctedFocusMs?: number } = {},
+    ) {
+      return transition(sessionId, (session) =>
+        endFocusSession(session, now, correctedFocusMs),
+      );
     },
   };
 }

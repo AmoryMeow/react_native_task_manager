@@ -148,7 +148,9 @@ test("an open session for another task is never silently replaced", async ({
   await expect(timer(page)).toHaveText(/^00:00:0\d$/);
 });
 
-test("browser Back ends the session like Exit focus", async ({ page }) => {
+test("browser Back keeps the session open instead of ending it", async ({
+  page,
+}) => {
   await openTaskList(page);
   await createTask(page, "Back timer task");
   await createTask(page, "Other back task");
@@ -156,7 +158,15 @@ test("browser Back ends the session like Exit focus", async ({ page }) => {
 
   await page.goBack();
   await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
+  await expect(
+    page.getByLabel("Unfinished focus session").getByText("Back timer task"),
+  ).toBeVisible();
 
-  await startFocus(page, "Other back task");
-  await expect(page.getByText("Another focus session is open")).toBeHidden();
+  await page
+    .getByRole("button", { name: "Open task details for Other back task" })
+    .click();
+  await page.getByRole("button", { name: "Start focus" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Another focus session is open" }),
+  ).toBeVisible();
 });
