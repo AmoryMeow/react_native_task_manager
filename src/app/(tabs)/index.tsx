@@ -16,6 +16,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useSQLiteContext } from "expo-sqlite";
 
 import { groupTasks, type TaskGroupId } from "@/entities/task/lib/group-tasks";
+import {
+  getInlineTitleSaveMessage,
+  isInlineTitleSaveSuccessful,
+  saveInlineTaskTitle,
+} from "@/entities/task/lib/inline-title-save";
 import type { Task, TaskSchedule } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
 import {
@@ -104,6 +109,9 @@ export default function HomeScreen() {
   const [lastDeletedTask, setLastDeletedTask] = useState<Task | null>(null);
   const [activeDrag, setActiveDrag] = useState<ActiveDrag | null>(null);
   const movingTaskIdsRef = useRef(new Set<string>());
+  // Mirrors updatingTaskIds synchronously so busy checks never read a stale
+  // render (e.g. a toggle started just before Open task details is tapped).
+  const updatingTaskIdsRef = useRef(new Set<string>());
 
   const [scheduleOption, setScheduleOption] = useState<ScheduleOption>("inbox");
 
@@ -150,6 +158,24 @@ export default function HomeScreen() {
   } = useTaskDragController<Task, TaskSection>();
 
   const getTasks = useCallback(() => createTaskRepository(db).getTasks(), [db]);
+
+  const isTaskBusy = (taskId: string) =>
+    updatingTaskIdsRef.current.has(taskId) ||
+    movingTaskIdsRef.current.has(taskId);
+
+  const beginTaskUpdate = (taskId: string) => {
+    updatingTaskIdsRef.current.add(taskId);
+    setUpdatingTaskIds((prev) => new Set(prev).add(taskId));
+  };
+
+  const endTaskUpdate = (taskId: string) => {
+    updatingTaskIdsRef.current.delete(taskId);
+    setUpdatingTaskIds((prev) => {
+      const next = new Set(prev);
+      next.delete(taskId);
+      return next;
+    });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -280,12 +306,12 @@ export default function HomeScreen() {
   };
 
   const toggleTask = async (task: Task) => {
-    if (updatingTaskIds.has(task.id) || movingTaskIdsRef.current.has(task.id)) {
+    if (isTaskBusy(task.id)) {
       return;
     }
 
     setActionError(null);
-    setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
+    beginTaskUpdate(task.id);
 
     try {
       const updatedTask = await createTaskRepository(db).toggleTask(task);
@@ -299,18 +325,13 @@ export default function HomeScreen() {
       console.error("Failed to toggle task:", error);
       setActionError("Could not update task");
     } finally {
-      setUpdatingTaskIds((prev) => {
-        const next = new Set(prev);
-        next.delete(task.id);
-        return next;
-      });
+      endTaskUpdate(task.id);
     }
   };
 
   const startEditingTask = (task: Task) => {
     if (
-      updatingTaskIds.has(task.id) ||
-      movingTaskIdsRef.current.has(task.id) ||
+      isTaskBusy(task.id) ||
       (editingTaskId !== null && editingTaskId !== task.id)
     ) {
       return;
@@ -331,55 +352,45 @@ export default function HomeScreen() {
     task: Task,
     nextTitle: string,
   ): Promise<boolean> => {
-    const trimmedTitle = nextTitle.trim();
+    const result = await saveInlineTaskTitle({
+      task,
+      nextTitle,
+      busyTasks: {
+        isBusy: isTaskBusy,
+        begin: beginTaskUpdate,
+        end: endTaskUpdate,
+      },
+      persistTitle: async (taskToUpdate, title) => {
+        setActionError(null);
+        await createTaskRepository(db).updateTaskTitle(taskToUpdate, title);
+        setTasks(await getTasks());
+      },
+    });
 
-    if (!trimmedTitle) {
-      setActionError("Task title cannot be empty");
+    if (result.status === "failed") {
+      console.error("Failed to update task title:", result.error);
+    }
+
+    setActionError(getInlineTitleSaveMessage(result));
+
+    if (!isInlineTitleSaveSuccessful(result)) {
+      // Stay in edit mode so the draft survives for a retry.
       return false;
     }
 
-    if (trimmedTitle === task.title) {
-      setActionError(null);
-      setEditingTaskId((currentTaskId) =>
-        currentTaskId === task.id ? null : currentTaskId,
-      );
-      return true;
-    }
-
-    if (updatingTaskIds.has(task.id) || movingTaskIdsRef.current.has(task.id)) {
-      return false;
-    }
-
-    setActionError(null);
-    setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
-
-    try {
-      await createTaskRepository(db).updateTaskTitle(task, trimmedTitle);
-      setTasks(await getTasks());
-      setEditingTaskId((currentTaskId) =>
-        currentTaskId === task.id ? null : currentTaskId,
-      );
-      return true;
-    } catch (error) {
-      console.error("Failed to update task title:", error);
-      setActionError("Could not update task title");
-      return false;
-    } finally {
-      setUpdatingTaskIds((prev) => {
-        const next = new Set(prev);
-        next.delete(task.id);
-        return next;
-      });
-    }
+    setEditingTaskId((currentTaskId) =>
+      currentTaskId === task.id ? null : currentTaskId,
+    );
+    return true;
   };
 
   const deleteTask = async (task: Task) => {
-    if (updatingTaskIds.has(task.id) || movingTaskIdsRef.current.has(task.id)) {
+    if (isTaskBusy(task.id)) {
       return;
     }
 
     setActionError(null);
-    setUpdatingTaskIds((prev) => new Set(prev).add(task.id));
+    beginTaskUpdate(task.id);
 
     try {
       const deletedTaskId = await createTaskRepository(db).deleteTask(task.id);
@@ -392,11 +403,7 @@ export default function HomeScreen() {
       console.error("Failed to delete task:", error);
       setActionError("Could not delete task");
     } finally {
-      setUpdatingTaskIds((prev) => {
-        const next = new Set(prev);
-        next.delete(task.id);
-        return next;
-      });
+      endTaskUpdate(task.id);
     }
   };
 
