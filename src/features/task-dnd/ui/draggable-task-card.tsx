@@ -1,5 +1,9 @@
 import { useCallback, useMemo } from "react";
-import { StyleSheet, View } from "react-native";
+import {
+  StyleSheet,
+  View,
+  type AccessibilityActionEvent,
+} from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   measure,
@@ -15,6 +19,8 @@ import {
   AUTO_SCROLL_EDGE_SIZE,
   getDropTargetIndex,
   getTaskGroupIndex,
+  getTaskMoveActionTarget,
+  getTaskMoveActions,
   type TaskDragSharedValues,
   type TaskGroupRefs,
 } from "@/features/task-dnd/model/task-drag";
@@ -200,6 +206,17 @@ export function DraggableTaskCard({
   );
   /* eslint-enable react-hooks/immutability, react-hooks/refs */
 
+  // Non-gesture alternative for screen readers: the same targets and the same
+  // onDragEnd path as dropping the card on a group header.
+  const moveActions = isDragDisabled ? [] : getTaskMoveActions(groupId);
+  const handleMoveAction = (event: AccessibilityActionEvent) => {
+    const target = getTaskMoveActionTarget(event.nativeEvent.actionName);
+
+    if (!target || isDragDisabled) return;
+
+    onDragEnd(taskId, groupId, getTaskGroupIndex(target));
+  };
+
   return (
     <Animated.View
       collapsable={false}
@@ -212,10 +229,11 @@ export function DraggableTaskCard({
           <GestureDetector gesture={dragGesture}>
             <Animated.View
               accessible
-              accessibilityHint="Long press, then drag to another group"
+              accessibilityActions={moveActions}
+              accessibilityHint="Use the actions to move it to another group, or long press and drag."
               accessibilityLabel={`Move ${taskCardProps.task.title}`}
-              accessibilityRole="button"
               accessibilityState={{ disabled: isDragDisabled }}
+              onAccessibilityAction={handleMoveAction}
               style={[styles.handle, isDragDisabled && styles.disabledHandle]}
             >
               <TaskDragHandleDots />
@@ -235,7 +253,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     height: "100%",
     justifyContent: "center",
-    width: 32,
+    // 44pt touch target; the card is 56pt tall.
+    width: 44,
   },
   disabledHandle: {
     opacity: 0.35,

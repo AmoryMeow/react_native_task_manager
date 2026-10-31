@@ -5,7 +5,9 @@ import type {
   SharedValue,
 } from "react-native-reanimated";
 
+import { toLocalDateString } from "@/entities/task/lib/format-task-schedule";
 import type { TaskGroupId } from "@/entities/task/lib/group-tasks";
+import type { TaskSchedule } from "@/entities/task/model/types";
 
 export const TASK_GROUP_IDS: TaskGroupId[] = [
   "earlier",
@@ -23,6 +25,72 @@ export const DROP_TARGET_GROUP_IDS = [
   "someday",
   "inbox",
 ] as const satisfies readonly TaskGroupId[];
+
+export type DropTargetGroupId = (typeof DROP_TARGET_GROUP_IDS)[number];
+
+const DROP_TARGET_LABELS: Record<DropTargetGroupId, string> = {
+  today: "Today",
+  soon: "Soon",
+  someday: "Someday",
+  inbox: "Inbox",
+};
+
+const MOVE_ACTION_PREFIX = "move-to-";
+
+export interface TaskMoveAction {
+  name: string;
+  label: string;
+}
+
+/**
+ * Screen-reader alternative to dragging: the same drop targets a drag can
+ * reach from `sourceGroupId`. Earlier and Scheduled need a specific date, so
+ * they stay in Task Details, exactly as with drag-and-drop.
+ */
+export function getTaskMoveActions(
+  sourceGroupId: TaskGroupId,
+): TaskMoveAction[] {
+  return DROP_TARGET_GROUP_IDS.filter(
+    (groupId) => groupId !== sourceGroupId,
+  ).map((groupId) => ({
+    name: `${MOVE_ACTION_PREFIX}${groupId}`,
+    label: getTaskMoveLabel(groupId),
+  }));
+}
+
+export function getTaskMoveLabel(groupId: DropTargetGroupId): string {
+  return `Move to ${DROP_TARGET_LABELS[groupId]}`;
+}
+
+export function getTaskMovedAnnouncement(groupId: DropTargetGroupId): string {
+  return `Moved to ${DROP_TARGET_LABELS[groupId]}`;
+}
+
+export function getTaskMoveActionTarget(
+  actionName: string,
+): DropTargetGroupId | null {
+  if (!actionName.startsWith(MOVE_ACTION_PREFIX)) return null;
+
+  const groupId = actionName.slice(MOVE_ACTION_PREFIX.length) as TaskGroupId;
+
+  return isDropTargetGroup(groupId) ? groupId : null;
+}
+
+export function getDestinationSchedule(
+  groupId: TaskGroupId,
+  now = new Date(),
+): TaskSchedule | null {
+  switch (groupId) {
+    case "today":
+      return { type: "date", date: toLocalDateString(now) };
+    case "soon":
+    case "someday":
+    case "inbox":
+      return { type: groupId };
+    default:
+      return null;
+  }
+}
 
 export const AUTO_SCROLL_EDGE_SIZE = 72;
 export const AUTO_SCROLL_SPEED = 0.45;

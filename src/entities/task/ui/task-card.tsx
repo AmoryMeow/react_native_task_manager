@@ -124,16 +124,16 @@ export function TaskCard({
 
   return (
     <View
-      className={`mb-2 h-14 flex-row items-center overflow-hidden rounded-xl border border-zinc-200 bg-white ${
+      className={`mb-2 min-h-14 flex-row items-center overflow-hidden rounded-xl border border-zinc-200 bg-white ${
         isUpdating ? "opacity-50" : ""
       }`}
     >
       <Pressable
         accessibilityRole="checkbox"
-        accessibilityState={{
-          checked: isDone,
-          disabled: isUpdating,
-        }}
+        accessibilityLabel={`Complete ${task.title}`}
+        // aria-checked (unlike accessibilityState.checked) also reaches web.
+        aria-checked={isDone}
+        accessibilityState={{ disabled: isUpdating }}
         disabled={isUpdating}
         className="h-full w-11 items-center justify-center active:bg-zinc-50"
         onPress={() => void toggleTask()}
@@ -153,7 +153,7 @@ export function TaskCard({
         <TextInput
           ref={titleInputRef}
           accessibilityLabel={isEditing ? "Task title" : `Edit ${task.title}`}
-          className={`h-6 p-0 text-sm leading-5 ${
+          className={`min-h-6 p-0 text-sm leading-5 ${
             isEditing
               ? "font-medium text-zinc-950"
               : isDone
@@ -207,7 +207,7 @@ export function TaskCard({
         }}
         onPress={() => void openDetails()}
         accessibilityRole="button"
-        accessibilityLabel="Open task details"
+        accessibilityLabel={`Open task details for ${task.title}`}
         hitSlop={8}
         className="h-11 w-11 items-center justify-center"
       >
@@ -239,7 +239,7 @@ export function TaskCard({
           if (isEditing) cancelRequestedRef.current = true;
         }}
         onPress={deleteTask}
-        className="h-full w-9 items-center justify-center border-l border-zinc-100 active:bg-zinc-100"
+        className="h-full w-11 items-center justify-center border-l border-zinc-100 active:bg-zinc-100"
       >
         <Text className="text-lg text-zinc-400">×</Text>
       </Pressable>

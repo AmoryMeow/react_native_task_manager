@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -24,6 +25,8 @@ import {
 import type { Task, TaskSchedule } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
 import {
+  getDestinationSchedule,
+  getTaskMovedAnnouncement,
   isDropTargetGroup,
   TASK_GROUP_IDS,
 } from "@/features/task-dnd/model/task-drag";
@@ -77,19 +80,6 @@ function toTaskSchedule(option: ScheduleOption): TaskSchedule {
   }
 
   return { type: option };
-}
-
-function getDestinationSchedule(groupId: TaskGroupId): TaskSchedule | null {
-  switch (groupId) {
-    case "today":
-      return { type: "date", date: getLocalDate(new Date()) };
-    case "soon":
-    case "someday":
-    case "inbox":
-      return { type: groupId };
-    default:
-      return null;
-  }
 }
 
 export default function HomeScreen() {
@@ -242,7 +232,14 @@ export default function HomeScreen() {
       void createTaskRepository(db)
         .moveTaskToSchedule(taskId, schedule)
         .then(() => getTasks())
-        .then(setTasks)
+        .then((savedTasks) => {
+          setTasks(savedTasks);
+          // The card leaves the group the screen reader was focused on, so
+          // confirm where it went. This is a no-op without a screen reader.
+          AccessibilityInfo.announceForAccessibility(
+            getTaskMovedAnnouncement(destinationGroupId),
+          );
+        })
         .catch((error) => {
           console.error("Failed to move task:", error);
           setActionError("Could not move task");

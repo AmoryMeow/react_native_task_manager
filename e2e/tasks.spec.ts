@@ -105,6 +105,44 @@ test("stays on Tasks with the draft when the inline save fails before opening Ta
   );
 });
 
+test("exposes task completion and card controls to assistive technology", async ({
+  page,
+}) => {
+  const title = "E2E accessible task with a deliberately long title for labels";
+
+  await openTaskList(page);
+  await createTask(page, title);
+
+  const checkbox = page.getByRole("checkbox", { name: `Complete ${title}` });
+  await expect(checkbox).not.toBeChecked();
+
+  const deleteButton = page.getByRole("button", { name: `Delete ${title}` });
+  const dragHandle = page.getByLabel(`Move ${title}`);
+  const detailsButton = page.getByRole("button", {
+    name: `Open task details for ${title}`,
+  });
+
+  await expect(detailsButton).toBeVisible();
+  // The handle is not announced as a button: activating it does nothing.
+  await expect(page.getByRole("button", { name: `Move ${title}` })).toHaveCount(
+    0,
+  );
+
+  for (const control of [deleteButton, dragHandle]) {
+    const box = await control.boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(44);
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+  }
+
+  await checkbox.click();
+  await page.getByRole("button", { name: "Expand Completed" }).click();
+  await expect(checkbox).toBeChecked();
+
+  await checkbox.click();
+  await expect(checkbox).not.toBeChecked();
+  await expect(page.getByLabel(`Edit ${title}`)).toBeVisible();
+});
+
 test("persists title and description edits", async ({ page }) => {
   const originalTitle = "E2E editable task";
   const editedTitle = "E2E edited task";
@@ -196,7 +234,9 @@ test("opens Focus Mode, preserves edits, and completes the task", async ({
 
   await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Expand Completed" }).click();
-  await expect(page.getByRole("checkbox", { name: "✓" })).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: `Complete ${editedTitle}` }),
+  ).toBeChecked();
 });
 
 test("uses Tasks as the fallback for a direct Focus route with an invalid origin", async ({
