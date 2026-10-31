@@ -53,6 +53,58 @@ test("shows Task not found for a direct URL to a missing task", async ({
   await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
 });
 
+test("saves an inline title edit before opening Task Details", async ({
+  page,
+}) => {
+  const originalTitle = "E2E inline original";
+  const editedTitle = "E2E inline edited";
+
+  await openTaskList(page);
+  await createTask(page, originalTitle);
+
+  await page.getByLabel(`Edit ${originalTitle}`).click();
+  await page.getByLabel("Task title", { exact: true }).fill(editedTitle);
+  await page.getByRole("button", { name: "Open task details" }).click();
+
+  await expect(page.getByText("Task details", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Task title", { exact: true })).toHaveValue(
+    editedTitle,
+  );
+
+  await page.reload();
+  await expect(page.getByLabel("Task title", { exact: true })).toHaveValue(
+    editedTitle,
+  );
+});
+
+test("stays on Tasks with the draft when the inline save fails before opening Task Details", async ({
+  page,
+}) => {
+  const originalTitle = "E2E inline invalid";
+  const retriedTitle = "E2E inline retried";
+
+  await openTaskList(page);
+  await createTask(page, originalTitle);
+
+  await page.getByLabel(`Edit ${originalTitle}`).click();
+  const titleInput = page.getByLabel("Task title", { exact: true });
+  await titleInput.fill("   ");
+  await page.getByRole("button", { name: "Open task details" }).click();
+
+  await expect(page.getByText("Task title cannot be empty")).toBeVisible();
+  await expect(page.getByText("My Tasks", { exact: true })).toBeVisible();
+  await expect(page.getByText("Task details", { exact: true })).toBeHidden();
+  await expect(titleInput).toHaveValue("   ");
+
+  await titleInput.fill(retriedTitle);
+  await page.getByRole("button", { name: "Open task details" }).click();
+
+  await expect(page.getByText("Task details", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("Task title", { exact: true })).toHaveValue(
+    retriedTitle,
+  );
+});
+
 test("persists title and description edits", async ({ page }) => {
   const originalTitle = "E2E editable task";
   const editedTitle = "E2E edited task";

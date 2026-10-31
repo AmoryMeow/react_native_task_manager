@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Platform, Pressable, Text, TextInput, View } from "react-native";
 
 import { formatTaskSchedule } from "@/entities/task/lib/format-task-schedule";
+import { createDebouncedAction } from "@/shared/lib/debounced-action";
+import { createSingleFlight } from "@/shared/lib/single-flight";
 import type { Task } from "../model/types";
 
 export interface TaskCardProps {
@@ -35,43 +37,44 @@ export function TaskCard({
 }: TaskCardProps) {
   const isDone = task.status === "done";
   const [draftTitle, setDraftTitle] = useState(task.title);
+  const [titleSave] = useState(() => createSingleFlight<boolean>());
+  const [blurSave] = useState(() => createDebouncedAction(0));
   const titleInputRef = useRef<TextInput>(null);
-  const savePromiseRef = useRef<Promise<boolean> | null>(null);
-  const isSaveSettledRef = useRef(true);
+  const draftTitleRef = useRef(task.title);
   const cancelRequestedRef = useRef(false);
+  const isOpeningDetailsRef = useRef(false);
 
   useEffect(() => {
     if (isEditing) titleInputRef.current?.focus();
   }, [isEditing]);
 
+  const updateDraftTitle = (value: string) => {
+    draftTitleRef.current = value;
+    setDraftTitle(value);
+  };
+
   const saveTitle = () => {
+    // An explicit save supersedes a deferred blur save, so they never both run.
+    blurSave.cancel();
+
     if (cancelRequestedRef.current) {
       cancelRequestedRef.current = false;
       return Promise.resolve(false);
     }
 
-    if (savePromiseRef.current) return savePromiseRef.current;
-
-    isSaveSettledRef.current = false;
-    const savePromise = onSaveTitle(task, draftTitle).finally(() => {
-      isSaveSettledRef.current = true;
-    });
-
-    savePromiseRef.current = savePromise;
-    return savePromise;
+    return titleSave.run(() => onSaveTitle(task, draftTitleRef.current));
   };
 
   const startEditing = () => {
     cancelRequestedRef.current = false;
-    savePromiseRef.current = null;
-    isSaveSettledRef.current = true;
-    setDraftTitle(task.title);
+    titleSave.reset();
+    updateDraftTitle(task.title);
     onStartEditing(task);
   };
 
   const cancelEditing = () => {
     cancelRequestedRef.current = true;
-    setDraftTitle(task.title);
+    updateDraftTitle(task.title);
     onCancelEditing(task);
   };
 
@@ -79,11 +82,35 @@ export function TaskCard({
     if (isEditing) {
       const wasSaved = await saveTitle();
 
-      onToggle(wasSaved ? { ...task, title: draftTitle.trim() } : task);
+      onToggle(
+        wasSaved ? { ...task, title: draftTitleRef.current.trim() } : task,
+      );
       return;
     }
 
     onToggle(task);
+  };
+
+  const openDetails = async () => {
+    if (!isEditing) {
+      onOpenDetails();
+      return;
+    }
+
+    if (isOpeningDetailsRef.current) return;
+    isOpeningDetailsRef.current = true;
+
+    try {
+      titleInputRef.current?.blur();
+
+      // Persist the latest draft before Task Details reads the task. On
+      // failure, stay here in edit mode with the draft and the error visible.
+      if (await saveTitle()) {
+        onOpenDetails();
+      }
+    } finally {
+      isOpeningDetailsRef.current = false;
+    }
   };
 
   const deleteTask = () => {
@@ -135,9 +162,9 @@ export function TaskCard({
           }`}
           editable={isEditing && !isUpdating}
           onBlur={() => {
-            if (isEditing) setTimeout(() => void saveTitle(), 0);
+            if (isEditing) blurSave.schedule(() => void saveTitle());
           }}
-          onChangeText={setDraftTitle}
+          onChangeText={updateDraftTitle}
           onFocus={() => {
             if (
               Platform.OS === "web" &&
@@ -148,7 +175,7 @@ export function TaskCard({
               startEditing();
             }
 
-            if (isSaveSettledRef.current) savePromiseRef.current = null;
+            titleSave.releaseSettled();
           }}
           onPressIn={() => {
             if (!isEditing && !isEditDisabled && !isUpdating) startEditing();
@@ -173,7 +200,12 @@ export function TaskCard({
       </View>
 
       <Pressable
-        onPress={onOpenDetails}
+        onPressIn={() => {
+          // A finished (e.g. failed) save may be retried; one still in flight
+          // is joined instead of duplicated.
+          if (isEditing) titleSave.releaseSettled();
+        }}
+        onPress={() => void openDetails()}
         accessibilityRole="button"
         accessibilityLabel="Open task details"
         hitSlop={8}
