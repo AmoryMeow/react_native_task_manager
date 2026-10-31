@@ -6,7 +6,10 @@ import type {
 } from "react-native-reanimated";
 
 import { toLocalDateString } from "@/entities/task/lib/format-task-schedule";
-import type { TaskGroupId } from "@/entities/task/lib/group-tasks";
+import {
+  TASK_GROUP_TITLES,
+  type TaskGroupId,
+} from "@/entities/task/lib/group-tasks";
 import type { TaskSchedule } from "@/entities/task/model/types";
 
 export const TASK_GROUP_IDS: TaskGroupId[] = [
@@ -28,13 +31,6 @@ export const DROP_TARGET_GROUP_IDS = [
 
 export type DropTargetGroupId = (typeof DROP_TARGET_GROUP_IDS)[number];
 
-const DROP_TARGET_LABELS: Record<DropTargetGroupId, string> = {
-  today: "Today",
-  soon: "Soon",
-  someday: "Someday",
-  inbox: "Inbox",
-};
-
 const MOVE_ACTION_PREFIX = "move-to-";
 
 export interface TaskMoveAction {
@@ -44,7 +40,7 @@ export interface TaskMoveAction {
 
 /**
  * Screen-reader alternative to dragging: the same drop targets a drag can
- * reach from `sourceGroupId`. Earlier and Scheduled need a specific date, so
+ * reach from `sourceGroupId`. Earlier and Upcoming need a specific date, so
  * they stay in Task Details, exactly as with drag-and-drop.
  */
 export function getTaskMoveActions(
@@ -59,11 +55,11 @@ export function getTaskMoveActions(
 }
 
 export function getTaskMoveLabel(groupId: DropTargetGroupId): string {
-  return `Move to ${DROP_TARGET_LABELS[groupId]}`;
+  return `Move to ${TASK_GROUP_TITLES[groupId]}`;
 }
 
 export function getTaskMovedAnnouncement(groupId: DropTargetGroupId): string {
-  return `Moved to ${DROP_TARGET_LABELS[groupId]}`;
+  return `Moved to ${TASK_GROUP_TITLES[groupId]}`;
 }
 
 export function getTaskMoveActionTarget(

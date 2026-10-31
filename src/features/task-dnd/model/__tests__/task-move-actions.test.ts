@@ -29,7 +29,7 @@ describe("getTaskMoveActions", () => {
     },
   );
 
-  test("never offers the date-based Earlier or Scheduled groups as targets", () => {
+  test("never offers the date-based Earlier or Upcoming groups as targets", () => {
     for (const groupId of TASK_GROUP_IDS) {
       const targets = getTaskMoveActions(groupId).map((action) =>
         getTaskMoveActionTarget(action.name),

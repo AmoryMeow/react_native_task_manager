@@ -81,14 +81,9 @@ export default function FocusTaskPickerScreen() {
   return (
     <SafeAreaView edges={["left", "right"]} className="flex-1 bg-zinc-100">
       <View className="flex-1 px-4 pb-4 pt-4">
-        <View className="mb-4 gap-1">
-          <Text className="text-3xl font-bold tracking-tight text-zinc-950">
-            Focus Mode
-          </Text>
-          <Text className="text-sm leading-5 text-zinc-500">
-            Choose one task to work on without the surrounding list.
-          </Text>
-        </View>
+        <Text className="mb-4 text-sm leading-5 text-zinc-500">
+          Choose one task to work on without the surrounding list.
+        </Text>
 
         <TextInput
           accessibilityLabel="Search focus tasks"

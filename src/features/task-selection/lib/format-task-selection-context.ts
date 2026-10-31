@@ -1,4 +1,5 @@
 import { toLocalDateString } from "@/entities/task/lib/format-task-schedule";
+import { TASK_GROUP_TITLES } from "@/entities/task/lib/group-tasks";
 import type { Task } from "@/entities/task/model/types";
 
 export function formatTaskSelectionContext(
@@ -21,7 +22,9 @@ export function formatTaskSelectionContext(
     ...(year !== currentDate.getFullYear() ? { year: "numeric" } : {}),
   });
   const groupLabel =
-    task.schedule.date < currentLocalDate ? "Earlier" : "Upcoming";
+    task.schedule.date < currentLocalDate
+      ? TASK_GROUP_TITLES.earlier
+      : TASK_GROUP_TITLES.upcoming;
 
   return `${groupLabel} · ${formattedDate}`;
 }

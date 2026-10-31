@@ -167,7 +167,7 @@ export default function FocusScreen() {
         ? "Back to Task Duel"
         : from === "tools"
           ? "Back to Focus Mode"
-        : "Back to tasks";
+        : "Back to Tasks";
 
   return (
     <>

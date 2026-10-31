@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { TASK_GROUP_TITLES } from "@/entities/task/lib/group-tasks";
 import {
   DEFAULT_TASK_SELECTION_GROUPS,
   type TaskSelectionGroupId,
@@ -11,14 +12,9 @@ import { ChevronIcon } from "@/shared/ui/icons/chevron-icon";
 const taskGroupOptions: readonly {
   id: TaskSelectionGroupId;
   label: string;
-}[] = [
-  { id: "earlier", label: "Earlier" },
-  { id: "today", label: "Today" },
-  { id: "upcoming", label: "Upcoming" },
-  { id: "soon", label: "Soon" },
-  { id: "someday", label: "Someday" },
-  { id: "inbox", label: "Inbox" },
-];
+}[] = (
+  ["earlier", "today", "upcoming", "soon", "someday", "inbox"] as const
+).map((id) => ({ id, label: TASK_GROUP_TITLES[id] }));
 const allTaskGroups = taskGroupOptions.map((group) => group.id);
 
 function formatGroupSelection(groups: readonly TaskSelectionGroupId[]): string {

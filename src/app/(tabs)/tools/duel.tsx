@@ -396,7 +396,7 @@ export default function TaskDuelScreen() {
                     onPress={drawNewPair}
                   >
                     <Text className="text-center text-base font-semibold text-zinc-900">
-                      Try another pair
+                      New pair
                     </Text>
                   </Pressable>
                 )}

@@ -3,6 +3,16 @@ import type { Task } from "../model/types";
 export type TaskGroupId =
   "earlier" | "today" | "upcoming" | "soon" | "someday" | "inbox" | "completed";
 
+export const TASK_GROUP_TITLES: Record<TaskGroupId, string> = {
+  earlier: "Earlier",
+  today: "Today",
+  upcoming: "Upcoming",
+  soon: "Soon",
+  someday: "Someday",
+  inbox: "Inbox",
+  completed: "Completed",
+};
+
 export interface TaskGroup {
   id: TaskGroupId;
   title: string;
@@ -30,15 +40,17 @@ export function groupTasks(
 ): TaskGroup[] {
   const todayString = toLocalDateString(today);
 
-  const groups: TaskGroup[] = [
-    { id: "earlier", title: "Earlier", data: [] },
-    { id: "today", title: "Today", data: [] },
-    { id: "upcoming", title: "Scheduled", data: [] },
-    { id: "soon", title: "Soon", data: [] },
-    { id: "someday", title: "Someday", data: [] },
-    { id: "inbox", title: "Inbox", data: [] },
-    { id: "completed", title: "Completed", data: [] },
-  ];
+  const groups: TaskGroup[] = (
+    [
+      "earlier",
+      "today",
+      "upcoming",
+      "soon",
+      "someday",
+      "inbox",
+      "completed",
+    ] as const
+  ).map((id) => ({ id, title: TASK_GROUP_TITLES[id], data: [] }));
 
   const groupById = new Map(groups.map((group) => [group.id, group]));
 

@@ -25,8 +25,8 @@ first and organized with as much—or as little—detail as needed.
 
 - **Inbox** is a low-friction place to write something down without deciding
   when to do it. Tasks can be organized later.
-- **Today / Scheduled / Soon / Someday** separate immediate priorities from
-  upcoming work and ideas that can wait. `Scheduled` contains tasks with a
+- **Today / Upcoming / Soon / Someday** separate immediate priorities from
+  upcoming work and ideas that can wait. `Upcoming` contains tasks with a
   specific future date; `Soon` and `Someday` intentionally do not require one.
 - **Earlier** keeps tasks planned for previous dates visible so they can be
   reconsidered or rescheduled instead of disappearing from view. A planned
@@ -42,7 +42,7 @@ first and organized with as much—or as little—detail as needed.
   settings.
 - Quickly create a task and place it in Inbox, Today, Tomorrow, Soon, or
   Someday.
-- Group tasks into collapsible planning sections: Earlier, Today, Scheduled,
+- Group tasks into collapsible planning sections: Earlier, Today, Upcoming,
   Soon, Someday, Inbox, and Completed.
 - Edit titles directly in the list, or open task details to edit the title,
   description, and schedule.

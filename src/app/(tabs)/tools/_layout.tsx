@@ -28,6 +28,13 @@ export default function ToolsLayout() {
           title: "Task Duel",
         }}
       />
+      <Stack.Screen
+        name="focus"
+        options={{
+          headerBackTitle: "Tools",
+          title: "Focus Mode",
+        }}
+      />
     </Stack>
   );
 }
