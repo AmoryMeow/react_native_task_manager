@@ -8,6 +8,7 @@ import {
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   ActivityIndicator,
   AppState,
   Pressable,
@@ -20,6 +21,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { Task } from "../../entities/task/model/types";
 import { createTaskRepository } from "../../entities/task/repository/task-repository";
 import { parseFocusOrigin } from "../../features/task-focus/lib/focus-origin";
+import {
+  applyEndFocusChoice,
+  getTomorrowSuggestion,
+  shouldSuggestTomorrow,
+  type EndFocusChoice,
+  type EndFocusResult,
+} from "../../features/task-focus/lib/tomorrow-suggestion";
+import { FocusOrb } from "../../features/task-focus/ui/focus-orb";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -35,9 +44,13 @@ export default function FocusScreen() {
   const [loadState, setLoadState] = useState<LoadState>("loading");
   const [completionSaving, setCompletionSaving] = useState(false);
   const [completionError, setCompletionError] = useState<string | null>(null);
+  const [isTomorrowPromptOpen, setIsTomorrowPromptOpen] = useState(false);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const isMountedRef = useRef(true);
   const loadRequestRef = useRef(0);
   const completionPromiseRef = useRef<Promise<Task> | null>(null);
+  const schedulePromiseRef = useRef<Promise<EndFocusResult> | null>(null);
   const allowRemovalRef = useRef(false);
 
   useEffect(() => {
@@ -50,7 +63,9 @@ export default function FocusScreen() {
   }, []);
 
   const loadTask = useCallback(async () => {
-    if (!id || completionPromiseRef.current) return;
+    if (!id || completionPromiseRef.current || schedulePromiseRef.current) {
+      return;
+    }
 
     const requestId = loadRequestRef.current + 1;
     loadRequestRef.current = requestId;
@@ -96,7 +111,12 @@ export default function FocusScreen() {
 
   useEffect(() => {
     return navigation.addListener("beforeRemove", (event) => {
-      if (allowRemovalRef.current || !completionPromiseRef.current) return;
+      if (
+        allowRemovalRef.current ||
+        (!completionPromiseRef.current && !schedulePromiseRef.current)
+      ) {
+        return;
+      }
 
       event.preventDefault();
     });
@@ -121,11 +141,66 @@ export default function FocusScreen() {
     router.dismissTo("/");
   }
 
+  function exitFocus() {
+    if (completionPromiseRef.current || schedulePromiseRef.current) return;
+
+    if (task && shouldSuggestTomorrow(task, new Date())) {
+      setScheduleError(null);
+      setIsTomorrowPromptOpen(true);
+      AccessibilityInfo.announceForAccessibility(
+        "Would you like to continue this task tomorrow?",
+      );
+      return;
+    }
+
+    returnFromFocus();
+  }
+
+  function chooseEndFocus(choice: EndFocusChoice) {
+    if (!task || completionPromiseRef.current || schedulePromiseRef.current) {
+      return;
+    }
+
+    setScheduleSaving(true);
+    setScheduleError(null);
+
+    const choicePromise = applyEndFocusChoice({
+      choice,
+      task,
+      now: new Date(),
+      updateSchedule: (taskId, schedule) =>
+        createTaskRepository(db).updateTaskSchedule(taskId, schedule),
+    });
+    schedulePromiseRef.current = choicePromise;
+
+    void choicePromise
+      .then((result) => {
+        if (!isMountedRef.current) return;
+
+        if (result.status === "failed") {
+          console.error("Failed to move focus task to tomorrow", result.error);
+          setScheduleError("The task wasn't moved. Please try again.");
+          return;
+        }
+
+        allowRemovalRef.current = true;
+        returnFromFocus();
+      })
+      .finally(() => {
+        schedulePromiseRef.current = null;
+
+        if (isMountedRef.current) {
+          setScheduleSaving(false);
+        }
+      });
+  }
+
   function completeTask() {
     if (
       !task ||
       task.status === "done" ||
-      completionPromiseRef.current
+      completionPromiseRef.current ||
+      schedulePromiseRef.current
     ) {
       return;
     }
@@ -160,6 +235,15 @@ export default function FocusScreen() {
   }
 
   const isCompleted = task?.status === "done";
+  // Hide the prompt if a reload shows the task no longer qualifies (completed
+  // or rescheduled elsewhere); the regular actions come back.
+  const tomorrowSuggestion = task
+    ? getTomorrowSuggestion(task, new Date())
+    : null;
+  const showTomorrowPrompt =
+    isTomorrowPromptOpen && tomorrowSuggestion !== null;
+  const keepLabel =
+    tomorrowSuggestion === "overdue" ? "Keep current date" : "Keep for today";
   const returnLabel =
     from === "roulette"
       ? "Back to Task Roulette"
@@ -171,7 +255,9 @@ export default function FocusScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ gestureEnabled: !completionSaving }} />
+      <Stack.Screen
+        options={{ gestureEnabled: !completionSaving && !scheduleSaving }}
+      />
 
       <SafeAreaView className="flex-1 bg-zinc-50">
         <View className="flex-1 px-6 py-5">
@@ -227,13 +313,14 @@ export default function FocusScreen() {
                 showsVerticalScrollIndicator={false}
                 contentContainerClassName="flex-grow justify-center py-10"
               >
-                <View className="gap-5">
-                  <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                <View className="items-center gap-5">
+                  <FocusOrb active={!isCompleted} />
+                  <Text className="text-center text-xs font-semibold uppercase tracking-widest text-zinc-400">
                     {isCompleted ? "Completed" : "Focus"}
                   </Text>
                   <Text
                     accessibilityRole="header"
-                    className={`text-4xl font-bold leading-tight tracking-tight ${
+                    className={`text-center text-4xl font-bold leading-tight tracking-tight ${
                       isCompleted
                         ? "text-zinc-400 line-through"
                         : "text-zinc-950"
@@ -242,14 +329,14 @@ export default function FocusScreen() {
                     {task.title}
                   </Text>
                   {task.description ? (
-                    <Text className="text-lg leading-7 text-zinc-600">
+                    <Text className="text-center text-lg leading-7 text-zinc-600">
                       {task.description}
                     </Text>
                   ) : null}
                   {isCompleted ? (
                     <Text
                       accessibilityLiveRegion="polite"
-                      className="text-sm leading-5 text-zinc-500"
+                      className="text-center text-sm leading-5 text-zinc-500"
                     >
                       This task was completed while Focus Mode was open.
                     </Text>
@@ -257,61 +344,111 @@ export default function FocusScreen() {
                 </View>
               </ScrollView>
 
-              <View className="gap-2 pb-2 pt-4">
-                {completionError ? (
-                  <View
+              {showTomorrowPrompt ? (
+                <View className="gap-2 pb-2 pt-4">
+                  <Text
                     accessibilityLiveRegion="polite"
-                    className="mb-1 flex-row items-center justify-between gap-3 rounded-xl bg-red-50 px-3 py-2"
+                    className="mb-2 text-center text-base font-medium leading-6 text-zinc-800"
                   >
-                    <Text className="flex-1 text-sm text-red-700">
-                      {completionError}
-                    </Text>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Retry completing task"
-                      disabled={completionSaving}
-                      onPress={completeTask}
-                      className="min-h-10 justify-center px-2"
-                    >
-                      <Text className="text-sm font-semibold text-red-700">
-                        Retry
-                      </Text>
-                    </Pressable>
-                  </View>
-                ) : null}
+                    Would you like to continue this task tomorrow?
+                  </Text>
 
-                {!isCompleted ? (
+                  {scheduleError ? (
+                    <Text
+                      accessibilityLiveRegion="assertive"
+                      className="mb-1 rounded-xl bg-red-50 px-3 py-2 text-center text-sm text-red-700"
+                    >
+                      {scheduleError}
+                    </Text>
+                  ) : null}
+
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Complete task"
-                    accessibilityState={{ disabled: completionSaving }}
-                    disabled={completionSaving}
-                    onPress={completeTask}
+                    accessibilityLabel="Move to tomorrow"
+                    accessibilityState={{ disabled: scheduleSaving }}
+                    disabled={scheduleSaving}
+                    onPress={() => chooseEndFocus("move-to-tomorrow")}
                     className={`min-h-14 items-center justify-center rounded-2xl bg-zinc-950 px-5 active:bg-zinc-700 ${
-                      completionSaving ? "opacity-40" : ""
+                      scheduleSaving ? "opacity-40" : ""
                     }`}
                   >
                     <Text className="text-base font-semibold text-white">
-                      {completionSaving ? "Completing..." : "Complete task"}
+                      {scheduleSaving ? "Moving..." : "Move to tomorrow"}
                     </Text>
                   </Pressable>
-                ) : null}
 
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Exit focus"
-                  accessibilityState={{ disabled: completionSaving }}
-                  disabled={completionSaving}
-                  onPress={returnFromFocus}
-                  className={`min-h-12 items-center justify-center rounded-xl px-5 active:bg-zinc-100 ${
-                    completionSaving ? "opacity-40" : ""
-                  }`}
-                >
-                  <Text className="text-base font-medium text-zinc-600">
-                    Exit focus
-                  </Text>
-                </Pressable>
-              </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={keepLabel}
+                    accessibilityState={{ disabled: scheduleSaving }}
+                    disabled={scheduleSaving}
+                    onPress={() => chooseEndFocus("keep")}
+                    className={`min-h-12 items-center justify-center rounded-xl px-5 active:bg-zinc-100 ${
+                      scheduleSaving ? "opacity-40" : ""
+                    }`}
+                  >
+                    <Text className="text-base font-medium text-zinc-600">
+                      {keepLabel}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View className="gap-2 pb-2 pt-4">
+                  {completionError ? (
+                    <View
+                      accessibilityLiveRegion="polite"
+                      className="mb-1 flex-row items-center justify-between gap-3 rounded-xl bg-red-50 px-3 py-2"
+                    >
+                      <Text className="flex-1 text-sm text-red-700">
+                        {completionError}
+                      </Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Retry completing task"
+                        disabled={completionSaving}
+                        onPress={completeTask}
+                        className="min-h-10 justify-center px-2"
+                      >
+                        <Text className="text-sm font-semibold text-red-700">
+                          Retry
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+
+                  {!isCompleted ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Complete task"
+                      accessibilityState={{ disabled: completionSaving }}
+                      disabled={completionSaving}
+                      onPress={completeTask}
+                      className={`min-h-14 items-center justify-center rounded-2xl bg-zinc-950 px-5 active:bg-zinc-700 ${
+                        completionSaving ? "opacity-40" : ""
+                      }`}
+                    >
+                      <Text className="text-base font-semibold text-white">
+                        {completionSaving ? "Completing..." : "Complete task"}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Exit focus"
+                    accessibilityState={{ disabled: completionSaving }}
+                    disabled={completionSaving}
+                    onPress={exitFocus}
+                    className={`min-h-12 items-center justify-center rounded-xl px-5 active:bg-zinc-100 ${
+                      completionSaving ? "opacity-40" : ""
+                    }`}
+                  >
+                    <Text className="text-base font-medium text-zinc-600">
+                      Exit focus
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
             </View>
           )}
         </View>

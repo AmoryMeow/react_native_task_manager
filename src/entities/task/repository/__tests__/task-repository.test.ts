@@ -62,3 +62,43 @@ describe("TaskRepository.updateTaskDescription", () => {
     expect(runAsync).toHaveReturnedTimes(1);
   });
 });
+
+describe("TaskRepository.updateTaskSchedule", () => {
+  test("moves a task to another date without touching deadline or status", async () => {
+    const row = {
+      id: "task-1",
+      title: "Write the report",
+      description: null,
+      status: "todo",
+      schedule_type: "date",
+      scheduled_date: "2026-10-31",
+      due_at: "2026-11-05",
+      created_at: "2026-10-01T00:00:00.000Z",
+      updated_at: "2026-10-01T00:00:00.000Z",
+      completed_at: null,
+    };
+    const getFirstAsync = jest.fn().mockResolvedValue(row);
+    const runAsync = jest
+      .fn()
+      .mockResolvedValue({ changes: 1, lastInsertRowId: 0 });
+    const db = { getFirstAsync, runAsync } as unknown as SQLiteDatabase;
+
+    const updatedTask = await createTaskRepository(db).updateTaskSchedule(
+      "task-1",
+      { type: "date", date: "2026-11-01" },
+    );
+
+    const [sql, params] = runAsync.mock.calls[0] as [string, unknown[]];
+    const setClause = sql.slice(sql.indexOf("SET"), sql.indexOf("WHERE"));
+
+    expect(setClause).toContain("schedule_type");
+    expect(setClause).toContain("scheduled_date");
+    expect(setClause).not.toMatch(/due_at|status|completed_at/);
+    expect(params.slice(0, 2)).toEqual(["date", "2026-11-01"]);
+    expect(updatedTask).toMatchObject({
+      schedule: { type: "date", date: "2026-11-01" },
+      dueAt: "2026-11-05",
+      status: "todo",
+    });
+  });
+});

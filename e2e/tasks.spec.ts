@@ -143,6 +143,152 @@ test("exposes task completion and card controls to assistive technology", async 
   await expect(page.getByLabel(`Edit ${title}`)).toBeVisible();
 });
 
+async function createTodayTask(page: Page, title: string) {
+  await page.getByRole("button", { name: "Today", exact: true }).click();
+  await createTask(page, title);
+}
+
+async function focusOnlyTask(page: Page) {
+  await openOnlyTask(page);
+  await page.getByRole("button", { name: "Start focus" }).click();
+  await expect(page).toHaveURL(/\/focus\//);
+}
+
+test("offers to continue today's task tomorrow and moves only its schedule", async ({
+  page,
+}) => {
+  const title = "E2E continue tomorrow";
+
+  await openTaskList(page);
+  await createTodayTask(page, title);
+  await focusOnlyTask(page);
+
+  await page.getByRole("button", { name: "Exit focus" }).click();
+  await expect(
+    page.getByText("Would you like to continue this task tomorrow?"),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/focus\//);
+
+  await page.getByRole("button", { name: "Move to tomorrow" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText("Upcoming", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: `Complete ${title}` }),
+  ).not.toBeChecked();
+
+  // Tomorrow in the browser's local time zone, formatted like Task Details.
+  const tomorrowLabel = await page.evaluate(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 1);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  });
+
+  await page.reload();
+  await openOnlyTask(page);
+  await expect(
+    page.getByRole("button", { name: `Schedule, ${tomorrowLabel}` }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add deadline" })).toBeVisible();
+});
+
+test("keeps today's task unchanged when ending focus", async ({ page }) => {
+  const title = "E2E keep for today";
+
+  await openTaskList(page);
+  await createTodayTask(page, title);
+  await focusOnlyTask(page);
+
+  await page.getByRole("button", { name: "Exit focus" }).click();
+  await page.getByRole("button", { name: "Keep for today" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText("Upcoming", { exact: true })).toBeHidden();
+  await expect(page.getByLabel(`Edit ${title}`)).toBeVisible();
+
+  await focusOnlyTask(page);
+  await page.getByRole("button", { name: "Exit focus" }).click();
+  await expect(
+    page.getByText("Would you like to continue this task tomorrow?"),
+  ).toBeVisible();
+});
+
+test("offers to move an overdue task to tomorrow", async ({ page }) => {
+  const title = "E2E overdue focus";
+  const localDate = (offsetDays: number) =>
+    page.evaluate((days) => {
+      const date = new Date();
+      date.setDate(date.getDate() + days);
+      return {
+        iso: [
+          date.getFullYear(),
+          String(date.getMonth() + 1).padStart(2, "0"),
+          String(date.getDate()).padStart(2, "0"),
+        ].join("-"),
+        label: date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+      };
+    }, offsetDays);
+
+  await openTaskList(page);
+  await createTask(page, title);
+  await openOnlyTask(page);
+
+  const yesterday = await localDate(-1);
+  await page.getByRole("button", { name: /^Schedule,/ }).click();
+  await page.getByRole("button", { name: "Choose a schedule date" }).click();
+  await page.getByLabel("Schedule date", { exact: true }).fill(yesterday.iso);
+  await page.getByRole("button", { name: "Apply selected date" }).click();
+  await page.getByRole("button", { name: "Start focus" }).click();
+  await expect(page).toHaveURL(/\/focus\//);
+
+  await page.getByRole("button", { name: "Exit focus" }).click();
+  await expect(
+    page.getByText("Would you like to continue this task tomorrow?"),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Keep for today" })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: "Keep current date" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText("Earlier", { exact: true })).toBeVisible();
+
+  await focusOnlyTask(page);
+  await page.getByRole("button", { name: "Exit focus" }).click();
+  await page.getByRole("button", { name: "Move to tomorrow" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText("Earlier", { exact: true })).toBeHidden();
+  await expect(page.getByText("Upcoming", { exact: true })).toBeVisible();
+
+  const tomorrow = await localDate(1);
+  await openOnlyTask(page);
+  await expect(
+    page.getByRole("button", { name: `Schedule, ${tomorrow.label}` }),
+  ).toBeVisible();
+});
+
+test("exits focus directly for an Inbox task", async ({ page }) => {
+  await openTaskList(page);
+  await createTask(page, "E2E inbox focus exit");
+  await focusOnlyTask(page);
+
+  await page.getByRole("button", { name: "Exit focus" }).click();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByText("Would you like to continue this task tomorrow?"),
+  ).toBeHidden();
+});
+
 test("persists title and description edits", async ({ page }) => {
   const originalTitle = "E2E editable task";
   const editedTitle = "E2E edited task";

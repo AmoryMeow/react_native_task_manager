@@ -98,6 +98,7 @@ test("returns to Roulette when Focus Mode is opened through Task Details", async
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Exit focus" }).click();
+  await page.getByRole("button", { name: "Keep for today" }).click();
   await expect(page).toHaveURL(/\/tools\/roulette$/);
   await expect(
     page.getByRole("button", { name: `Start focus on ${selectedTitle}` }),
@@ -129,6 +130,7 @@ test("offers Focus Mode when Duel has only one task", async ({ page }) => {
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
 
   await page.getByRole("button", { name: "Exit focus" }).click();
+  await page.getByRole("button", { name: "Keep for today" }).click();
   await expect(page).toHaveURL(/\/tools\/duel$/);
   await expect(
     page.getByRole("button", { name: `Start focus on ${title}` }),
@@ -157,6 +159,7 @@ test("starts Focus Mode with the task chosen in Duel", async ({ page }) => {
   ).toBeVisible();
 
   await page.getByRole("button", { name: "Exit focus" }).click();
+  await page.getByRole("button", { name: "Keep for today" }).click();
   await expect(page).toHaveURL(/\/tools\/duel$/);
   await expect(
     page.getByRole("button", { name: `Start focus on ${chosenTitle}` }),
@@ -225,6 +228,7 @@ test("searches and starts Focus Mode from the Tools task picker", async ({
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
 
   await page.getByRole("button", { name: "Exit focus" }).click();
+  await page.getByRole("button", { name: "Keep for today" }).click();
   await expect(page).toHaveURL(/\/tools\/focus$/);
   await expect(
     page.getByRole("button", { name: `Start focus on ${title}` }),

@@ -59,7 +59,13 @@ first and organized with as much—or as little—detail as needed.
   and make one immediate choice without reviewing the entire list.
 - Start Focus Mode from Tools by searching or browsing all unfinished tasks,
   or enter it directly from task details, a Roulette result, or a Duel choice.
-  Focus Mode keeps one task visible until it is completed or you return.
+  Focus Mode keeps one task visible until it is completed or you return,
+  with a slow, decorative breathing visual that stays still when the system
+  Reduce Motion setting is on.
+- When you exit Focus Mode on an unfinished task scheduled for today or an
+  earlier date, choose whether to move it to tomorrow or keep its current
+  date. Moving changes only the task's schedule; its deadline and completion
+  status stay unchanged. Other tasks exit Focus Mode directly.
 
 ## Tech stack
 
