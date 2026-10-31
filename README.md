@@ -67,14 +67,15 @@ first and organized with as much—or as little—detail as needed.
   date. Moving changes only the task's schedule; its deadline and completion
   status stay unchanged. Other tasks exit Focus Mode directly.
 
-### In development: focus session tracking
-
-The local database can now record focus sessions (start, pause, resume, end)
-so time spent focusing can later be shown per task. Only active time counts;
-paused time is excluded, and durations are calculated from stored timestamps,
-so they stay correct if the app is closed. Sessions are kept even when their
-task is deleted. This is not connected to Focus Mode yet: no sessions are
-recorded and no timer is shown.
+- Focus Mode records focus time for the open task. A timer shows the time
+  actually spent focusing (HH:MM:SS); Pause and Resume exclude paused time.
+  Time is calculated from timestamps stored on the device, so it stays correct
+  after backgrounding, locking the screen, reloading, or closing the app, and
+  reopening the same task continues the same session. Exit focus, completing
+  the task, or leaving with Back ends the session. Only one session can be open
+  at a time: opening Focus Mode for a different task offers to return to the
+  open session or end it first. Recorded sessions are kept for future
+  statistics, which are not available yet.
 
 ## Tech stack
 
