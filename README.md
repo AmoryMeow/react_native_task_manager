@@ -38,8 +38,8 @@ first and organized with as much—or as little—detail as needed.
 
 ## Current features
 
-- Navigate between the task list, decision tools, and a placeholder for future
-  settings.
+- Navigate between the task list, decision tools, and settings. Choose a
+  System, Light, or Dark appearance; System follows the device setting.
 - Quickly create a task and place it in Inbox, Today, Tomorrow, Soon, or
   Someday.
 - Group tasks into collapsible planning sections: Earlier, Today, Upcoming,

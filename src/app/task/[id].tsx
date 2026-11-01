@@ -20,6 +20,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { useThemeColors } from "../../shared/theme/use-theme-colors";
 
 import {
   formatTaskSchedule,
@@ -137,7 +138,7 @@ function InlineDatePicker({
   onClear,
 }: InlineDatePickerProps) {
   return (
-    <View className="mt-2 rounded-xl border border-zinc-200 bg-zinc-50 p-2.5">
+    <View className="mt-2 rounded-xl border border-line bg-subtle p-2.5">
       <CalendarDatePicker
         accessibilityLabel={accessibilityLabel}
         disabled={isSaving}
@@ -145,8 +146,8 @@ function InlineDatePicker({
         value={draftDate}
       />
 
-      <View className="border-t border-zinc-200 pt-2.5">
-        <Text className="text-sm font-medium text-zinc-600">
+      <View className="border-t border-line pt-2.5">
+        <Text className="text-sm font-medium text-secondary">
           {formatDate(draftDate)}
         </Text>
 
@@ -157,9 +158,9 @@ function InlineDatePicker({
               accessibilityLabel="Clear deadline"
               disabled={isSaving}
               onPress={onClear}
-              className="rounded-lg px-3 py-2 active:bg-zinc-200"
+              className="rounded-lg px-3 py-2 active:bg-pressed"
             >
-              <Text className="text-sm font-medium text-zinc-500">Clear</Text>
+              <Text className="text-sm font-medium text-muted">Clear</Text>
             </Pressable>
           )}
 
@@ -168,9 +169,9 @@ function InlineDatePicker({
             accessibilityLabel="Cancel date selection"
             disabled={isSaving}
             onPress={onCancel}
-            className="rounded-lg px-3 py-2 active:bg-zinc-200"
+            className="rounded-lg px-3 py-2 active:bg-pressed"
           >
-            <Text className="text-sm font-medium text-zinc-600">Cancel</Text>
+            <Text className="text-sm font-medium text-secondary">Cancel</Text>
           </Pressable>
 
           <Pressable
@@ -178,11 +179,11 @@ function InlineDatePicker({
             accessibilityLabel="Apply selected date"
             disabled={isSaving}
             onPress={onApply}
-            className={`rounded-lg bg-zinc-950 px-3 py-2 active:bg-zinc-700 ${
+            className={`rounded-lg bg-primary px-3 py-2 active:bg-primary-pressed ${
               isSaving ? "opacity-40" : ""
             }`}
           >
-            <Text className="text-sm font-semibold text-white">
+            <Text className="text-sm font-semibold text-primary-foreground">
               {isSaving ? "Saving..." : "Apply"}
             </Text>
           </Pressable>
@@ -201,6 +202,7 @@ export default function TaskDetailsScreen() {
 }
 
 function TaskDetailsContent({ id }: { id: string }) {
+  const colors = useThemeColors();
   const { from } = useLocalSearchParams<{ from?: string | string[] }>();
   const focusOrigin = parseFocusOrigin(from);
   const db = useSQLiteContext();
@@ -832,7 +834,7 @@ function TaskDetailsContent({ id }: { id: string }) {
       />
 
       <DismissKeyboardOnPress>
-        <View className="flex-1 bg-white px-5 pt-6">
+        <View className="flex-1 bg-surface px-5 pt-6">
           <View className="mb-6 flex-row items-center justify-between">
             <Text className="text-lg font-semibold">Task details</Text>
 
@@ -842,7 +844,7 @@ function TaskDetailsContent({ id }: { id: string }) {
               accessibilityRole="button"
               accessibilityState={{ disabled: isBusy }}
             >
-              <Text className="text-blue-600">
+              <Text className="text-accent">
                 {isBusy ? "Saving..." : "Done"}
               </Text>
             </Pressable>
@@ -852,10 +854,10 @@ function TaskDetailsContent({ id }: { id: string }) {
             <ActivityIndicator />
           ) : loadState.status === "error" ? (
             <View accessibilityLiveRegion="polite" className="items-start gap-3">
-              <Text className="text-base font-semibold text-zinc-900">
+              <Text className="text-base font-semibold text-foreground">
                 Couldn&apos;t load this task
               </Text>
-              <Text className="text-sm text-zinc-500">
+              <Text className="text-sm text-muted">
                 Something went wrong while reading it from storage. Please try
                 again.
               </Text>
@@ -863,9 +865,9 @@ function TaskDetailsContent({ id }: { id: string }) {
                 accessibilityRole="button"
                 accessibilityLabel="Retry loading task"
                 onPress={retryLoadTask}
-                className="rounded-lg bg-zinc-950 px-4 py-2.5 active:bg-zinc-700"
+                className="rounded-lg bg-primary px-4 py-2.5 active:bg-primary-pressed"
               >
-                <Text className="text-sm font-semibold text-white">Retry</Text>
+                <Text className="text-sm font-semibold text-primary-foreground">Retry</Text>
               </Pressable>
             </View>
           ) : loadState.status === "ready" && task ? (
@@ -876,7 +878,7 @@ function TaskDetailsContent({ id }: { id: string }) {
               contentContainerClassName="gap-5 pb-8"
             >
               <View className="gap-1.5">
-                <Text className="ml-1 text-xs font-medium text-zinc-500">
+                <Text className="ml-1 text-xs font-medium text-muted">
                   Title
                 </Text>
                 <View className="flex-row items-center gap-2">
@@ -893,17 +895,17 @@ function TaskDetailsContent({ id }: { id: string }) {
                     }}
                     disabled={isBusy}
                     onPress={toggleCompletion}
-                    className="h-12 w-10 items-center justify-center rounded-xl active:bg-zinc-100"
+                    className="h-12 w-10 items-center justify-center rounded-xl active:bg-pressed"
                   >
                     <View
                       className={
                         task.status === "done"
-                          ? "h-5 w-5 items-center justify-center rounded-md bg-zinc-950"
-                          : "h-5 w-5 rounded-md border-2 border-zinc-400"
+                          ? "h-5 w-5 items-center justify-center rounded-md bg-primary"
+                          : "h-5 w-5 rounded-md border-2 border-line-focus"
                       }
                     >
                       {task.status === "done" && (
-                        <Text className="text-xs font-bold text-white">✓</Text>
+                        <Text className="text-xs font-bold text-primary-foreground">✓</Text>
                       )}
                     </View>
                   </Pressable>
@@ -933,17 +935,17 @@ function TaskDetailsContent({ id }: { id: string }) {
                     onSubmitEditing={() => descriptionInputRef.current?.focus()}
                     editable={!isBusy}
                     placeholder="Task title"
-                    placeholderTextColor="#a1a1aa"
+                    placeholderTextColor={colors.faint}
                     returnKeyType="next"
-                    selectionColor="#18181b"
-                    className={`min-h-12 flex-1 rounded-xl border bg-zinc-50 px-3.5 py-2.5 text-lg font-semibold ${
+                    selectionColor={colors.foreground}
+                    className={`min-h-12 flex-1 rounded-xl border bg-subtle px-3.5 py-2.5 text-lg font-semibold ${
                       task.status === "done"
-                        ? "text-zinc-400 line-through"
-                        : "text-zinc-950"
+                        ? "text-faint line-through"
+                        : "text-foreground"
                     } ${
                       focusedField === "title"
-                        ? "border-zinc-500"
-                        : "border-zinc-200"
+                        ? "border-line-focus"
+                        : "border-line"
                     }`}
                   />
                 </View>
@@ -953,7 +955,7 @@ function TaskDetailsContent({ id }: { id: string }) {
                     accessibilityLiveRegion="polite"
                     className="ml-12 flex-row items-center justify-between gap-3 px-1"
                   >
-                    <Text className="flex-1 text-xs text-red-600">
+                    <Text className="flex-1 text-xs text-danger">
                       {titleSaveError}
                     </Text>
                     <Pressable
@@ -964,9 +966,9 @@ function TaskDetailsContent({ id }: { id: string }) {
                         titleAutosave.cancel();
                         void saveTitle();
                       }}
-                      className="rounded-md px-2 py-1 active:bg-zinc-100"
+                      className="rounded-md px-2 py-1 active:bg-pressed"
                     >
-                      <Text className="text-xs font-semibold text-blue-600">
+                      <Text className="text-xs font-semibold text-accent">
                         Retry
                       </Text>
                     </Pressable>
@@ -975,7 +977,7 @@ function TaskDetailsContent({ id }: { id: string }) {
               </View>
 
               <View className="gap-1.5">
-                <Text className="ml-1 text-xs font-medium text-zinc-500">
+                <Text className="ml-1 text-xs font-medium text-muted">
                   Description
                 </Text>
                 <TextInput
@@ -1003,13 +1005,13 @@ function TaskDetailsContent({ id }: { id: string }) {
                   }}
                   editable={!isBusy}
                   placeholder="Add description..."
-                  placeholderTextColor="#a1a1aa"
-                  selectionColor="#18181b"
+                  placeholderTextColor={colors.faint}
+                  selectionColor={colors.foreground}
                   textAlignVertical="top"
-                  className={`min-h-24 rounded-xl border bg-zinc-50 p-3 text-base text-zinc-800 ${
+                  className={`min-h-24 rounded-xl border bg-subtle p-3 text-base text-foreground ${
                     focusedField === "description"
-                      ? "border-zinc-500"
-                      : "border-zinc-200"
+                      ? "border-line-focus"
+                      : "border-line"
                   }`}
                 />
 
@@ -1018,7 +1020,7 @@ function TaskDetailsContent({ id }: { id: string }) {
                     accessibilityLiveRegion="polite"
                     className="flex-row items-center justify-between gap-3 px-1"
                   >
-                    <Text className="flex-1 text-xs text-red-600">
+                    <Text className="flex-1 text-xs text-danger">
                       {descriptionSaveError}
                     </Text>
                     <Pressable
@@ -1029,9 +1031,9 @@ function TaskDetailsContent({ id }: { id: string }) {
                         descriptionAutosave.cancel();
                         void saveDescription();
                       }}
-                      className="rounded-md px-2 py-1 active:bg-zinc-100"
+                      className="rounded-md px-2 py-1 active:bg-pressed"
                     >
-                      <Text className="text-xs font-semibold text-blue-600">
+                      <Text className="text-xs font-semibold text-accent">
                         Retry
                       </Text>
                     </Pressable>
@@ -1055,13 +1057,13 @@ function TaskDetailsContent({ id }: { id: string }) {
                   }}
                   className={`h-12 flex-row items-center justify-between rounded-xl border px-3.5 ${
                     scheduleExpanded
-                      ? "border-zinc-400 bg-zinc-50"
-                      : "border-zinc-200 bg-white active:bg-zinc-50"
+                      ? "border-line-focus bg-subtle"
+                      : "border-line bg-surface active:bg-pressed"
                   } ${isBusy ? "opacity-40" : ""}`}
                 >
                   <View className="flex-row items-center gap-2.5">
                     <CalendarIcon />
-                    <Text className="text-sm font-medium text-zinc-800">
+                    <Text className="text-sm font-medium text-foreground">
                       Schedule
                     </Text>
                   </View>
@@ -1069,7 +1071,7 @@ function TaskDetailsContent({ id }: { id: string }) {
                   <View className="ml-3 flex-row items-center gap-2">
                     <Text
                       numberOfLines={1}
-                      className="flex-shrink text-sm text-zinc-500"
+                      className="flex-shrink text-sm text-muted"
                     >
                       {formatScheduleValue(task.schedule)}
                     </Text>
@@ -1078,7 +1080,7 @@ function TaskDetailsContent({ id }: { id: string }) {
                 </Pressable>
 
                 {scheduleExpanded && (
-                  <View className="gap-2 rounded-xl bg-zinc-50 p-2.5">
+                  <View className="gap-2 rounded-xl bg-subtle p-2.5">
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
@@ -1104,15 +1106,15 @@ function TaskDetailsContent({ id }: { id: string }) {
                             onPress={() => selectSchedule(option.value)}
                             className={`${
                               isSelected
-                                ? "rounded-full bg-zinc-950 px-3 py-1.5"
-                                : "rounded-full border border-zinc-300 bg-white px-3 py-1.5 active:bg-zinc-100"
+                                ? "rounded-full bg-primary px-3 py-1.5"
+                                : "rounded-full border border-line-strong bg-surface px-3 py-1.5 active:bg-pressed"
                             } ${isBusy ? "opacity-40" : ""}`}
                           >
                             <Text
                               className={
                                 isSelected
-                                  ? "text-xs font-semibold text-white"
-                                  : "text-xs font-medium text-zinc-600"
+                                  ? "text-xs font-semibold text-primary-foreground"
+                                  : "text-xs font-medium text-secondary"
                               }
                             >
                               {option.label}
@@ -1131,10 +1133,10 @@ function TaskDetailsContent({ id }: { id: string }) {
                       }}
                       disabled={isBusy}
                       onPress={() => openDatePicker("schedule")}
-                      className="h-10 flex-row items-center gap-2 rounded-lg px-2 active:bg-zinc-200"
+                      className="h-10 flex-row items-center gap-2 rounded-lg px-2 active:bg-pressed"
                     >
                       <CalendarIcon size={15} />
-                      <Text className="text-sm font-medium text-zinc-700">
+                      <Text className="text-sm font-medium text-secondary">
                         Choose a date
                       </Text>
                     </Pressable>
@@ -1172,19 +1174,19 @@ function TaskDetailsContent({ id }: { id: string }) {
                     onPress={toggleDeadlinePicker}
                     className={`h-12 flex-row items-center justify-between rounded-xl border px-3.5 ${
                       activeDatePicker === "deadline"
-                        ? "border-zinc-400 bg-zinc-50"
-                        : "border-zinc-200 bg-white active:bg-zinc-50"
+                        ? "border-line-focus bg-subtle"
+                        : "border-line bg-surface active:bg-pressed"
                     } ${isBusy ? "opacity-40" : ""}`}
                   >
                     <View className="flex-row items-center gap-2.5">
                       <CalendarIcon />
-                      <Text className="text-sm font-medium text-zinc-800">
+                      <Text className="text-sm font-medium text-foreground">
                         Deadline
                       </Text>
                     </View>
 
                     <View className="ml-3 flex-row items-center gap-2">
-                      <Text className="text-sm text-zinc-500">
+                      <Text className="text-sm text-muted">
                         {formatDate(task.dueAt)}
                       </Text>
                       <ChevronIcon
@@ -1204,11 +1206,11 @@ function TaskDetailsContent({ id }: { id: string }) {
                     }}
                     disabled={isBusy}
                     onPress={toggleDeadlinePicker}
-                    className={`h-10 self-start justify-center rounded-lg px-2.5 active:bg-zinc-100 ${
+                    className={`h-10 self-start justify-center rounded-lg px-2.5 active:bg-pressed ${
                       isBusy ? "opacity-40" : ""
                     }`}
                   >
-                    <Text className="text-sm font-medium text-zinc-500">
+                    <Text className="text-sm font-medium text-muted">
                       + Add deadline
                     </Text>
                   </Pressable>
@@ -1235,7 +1237,7 @@ function TaskDetailsContent({ id }: { id: string }) {
                 )}
 
                 {showScheduleDeadlineWarning && (
-                  <Text className="px-2 pt-0.5 text-xs font-medium text-amber-700">
+                  <Text className="px-2 pt-0.5 text-xs font-medium text-warning">
                     Scheduled after deadline
                   </Text>
                 )}
@@ -1248,18 +1250,18 @@ function TaskDetailsContent({ id }: { id: string }) {
                   accessibilityState={{ disabled: isBusy }}
                   disabled={isBusy}
                   onPress={handleStartFocus}
-                  className={`min-h-12 items-center justify-center rounded-xl bg-zinc-950 px-4 active:bg-zinc-700 ${
+                  className={`min-h-12 items-center justify-center rounded-xl bg-primary px-4 active:bg-primary-pressed ${
                     isBusy ? "opacity-40" : ""
                   }`}
                 >
-                  <Text className="text-base font-semibold text-white">
+                  <Text className="text-base font-semibold text-primary-foreground">
                     Start focus
                   </Text>
                 </Pressable>
               )}
             </ScrollView>
           ) : (
-            <Text className="text-zinc-500">Task not found</Text>
+            <Text className="text-muted">Task not found</Text>
           )}
         </View>
       </DismissKeyboardOnPress>

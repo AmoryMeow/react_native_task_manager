@@ -1,6 +1,9 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Platform } from "react-native";
 
+import { palette } from "@/shared/theme/palette";
+import { useEffectiveColorScheme } from "@/shared/theme/use-theme-colors";
+
 import type { CalendarDatePickerProps } from "./calendar-date-picker.types";
 
 export function CalendarDatePicker({
@@ -8,6 +11,9 @@ export function CalendarDatePicker({
   onChange,
   value,
 }: CalendarDatePickerProps) {
+  const scheme = useEffectiveColorScheme();
+  const colors = palette[scheme];
+
   if (Platform.OS !== "ios") return null;
 
   return (
@@ -17,8 +23,8 @@ export function CalendarDatePicker({
       mode="date"
       display="inline"
       onValueChange={(_event, selectedDate) => onChange(selectedDate)}
-      accentColor="#18181b"
-      themeVariant="light"
+      accentColor={colors.foreground}
+      themeVariant={scheme}
       style={{ height: 320, width: "100%" }}
     />
   );

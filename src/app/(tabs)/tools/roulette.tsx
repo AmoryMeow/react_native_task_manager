@@ -19,6 +19,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useThemeColors } from "@/shared/theme/use-theme-colors";
 
 import type { Task } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
@@ -84,6 +85,7 @@ function buildReelSequence(
 }
 
 export default function TaskRouletteScreen() {
+  const colors = useThemeColors();
   const db = useSQLiteContext();
   const prefersReducedMotion = useReducedMotion();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -386,7 +388,7 @@ export default function TaskRouletteScreen() {
   return (
     <SafeAreaView
       edges={["left", "right"]}
-      className="flex-1 bg-zinc-100"
+      className="flex-1 bg-canvas"
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -400,23 +402,23 @@ export default function TaskRouletteScreen() {
 
         {isLoading ? (
           <View className="flex-1 items-center justify-center gap-3 py-12">
-            <ActivityIndicator color="#18181b" />
-            <Text className="text-sm text-zinc-500">Choosing a task…</Text>
+            <ActivityIndicator color={colors.foreground} />
+            <Text className="text-sm text-muted">Choosing a task…</Text>
           </View>
         ) : loadError ? (
           <View className="flex-1 items-center justify-center gap-4 px-6 py-12">
-            <Text className="text-center text-base font-medium text-zinc-900">
+            <Text className="text-center text-base font-medium text-foreground">
               {loadError}
             </Text>
-            <Text className="text-center text-sm leading-5 text-zinc-500">
+            <Text className="text-center text-sm leading-5 text-muted">
               Your tasks are still safely stored on this device.
             </Text>
             <Pressable
               accessibilityRole="button"
-              className="min-h-12 justify-center rounded-xl border border-zinc-300 bg-white px-5 active:bg-zinc-50"
+              className="min-h-12 justify-center rounded-xl border border-line-strong bg-surface px-5 active:bg-pressed"
               onPress={() => void loadTasks()}
             >
-              <Text className="text-center text-sm font-semibold text-zinc-900">
+              <Text className="text-center text-sm font-semibold text-foreground">
                 Retry
               </Text>
             </Pressable>
@@ -424,10 +426,10 @@ export default function TaskRouletteScreen() {
         ) : selectedGroups.length === 0 ? (
           <View className="flex-1 gap-6">
             <View className="flex-1 items-center justify-center gap-3 px-6 py-12">
-              <Text className="text-center text-xl font-semibold text-zinc-900">
+              <Text className="text-center text-xl font-semibold text-foreground">
                 Choose at least one group
               </Text>
-              <Text className="text-center text-sm leading-5 text-zinc-500">
+              <Text className="text-center text-sm leading-5 text-muted">
                 Select the groups you want Task Roulette to choose from.
               </Text>
             </View>
@@ -436,9 +438,9 @@ export default function TaskRouletteScreen() {
               accessibilityLabel="Spin Task Roulette"
               accessibilityState={{ disabled: true }}
               disabled
-              className="min-h-12 justify-center rounded-xl bg-zinc-950 px-5 opacity-40"
+              className="min-h-12 justify-center rounded-xl bg-primary px-5 opacity-40"
             >
-              <Text className="text-center text-base font-semibold text-white">
+              <Text className="text-center text-base font-semibold text-primary-foreground">
                 Spin
               </Text>
             </Pressable>
@@ -446,10 +448,10 @@ export default function TaskRouletteScreen() {
         ) : eligibleTasks.length === 0 ? (
           <View className="flex-1 gap-6">
             <View className="flex-1 items-center justify-center gap-3 px-6 py-12">
-              <Text className="text-center text-xl font-semibold text-zinc-900">
+              <Text className="text-center text-xl font-semibold text-foreground">
                 No tasks in these groups
               </Text>
-              <Text className="text-center text-sm leading-5 text-zinc-500">
+              <Text className="text-center text-sm leading-5 text-muted">
                 Choose another group or add an unfinished task to one of the
                 selected groups.
               </Text>
@@ -459,9 +461,9 @@ export default function TaskRouletteScreen() {
               accessibilityLabel="Spin Task Roulette"
               accessibilityState={{ disabled: true }}
               disabled
-              className="min-h-12 justify-center rounded-xl bg-zinc-950 px-5 opacity-40"
+              className="min-h-12 justify-center rounded-xl bg-primary px-5 opacity-40"
             >
-              <Text className="text-center text-base font-semibold text-white">
+              <Text className="text-center text-base font-semibold text-primary-foreground">
                 Spin
               </Text>
             </Pressable>
@@ -472,23 +474,23 @@ export default function TaskRouletteScreen() {
               {interactionState === "idle" ? (
                 <View className="h-4" />
               ) : (
-                <Text className="text-center text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                <Text className="text-center text-xs font-semibold uppercase tracking-widest text-faint">
                   {isSpinning ? "Spinning…" : "Your next task"}
                 </Text>
               )}
 
               {interactionState === "idle" ? (
                 <View
-                  className="items-center justify-center rounded-3xl border border-zinc-200 bg-white px-8"
+                  className="items-center justify-center rounded-3xl border border-line bg-surface px-8"
                   style={{ height: reelViewportHeight }}
                 >
-                  <Text className="text-center text-xl font-semibold leading-7 text-zinc-500">
+                  <Text className="text-center text-xl font-semibold leading-7 text-muted">
                     Ready to pick your next task?
                   </Text>
                 </View>
               ) : (
                 <View
-                  className="relative overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100"
+                  className="relative overflow-hidden rounded-3xl border border-line bg-canvas"
                   style={{ height: reelViewportHeight }}
                 >
                   <Animated.View
@@ -512,25 +514,25 @@ export default function TaskRouletteScreen() {
                           }
                           className={`mx-3 justify-center rounded-2xl border px-5 ${
                             isWinningCard
-                              ? "border-zinc-400 bg-white"
+                              ? "border-line-focus bg-surface"
                               : interactionState === "result"
-                                ? "border-zinc-200 bg-white opacity-60"
-                                : "border-zinc-200 bg-white"
+                                ? "border-line bg-surface opacity-60"
+                                : "border-line bg-surface"
                           }`}
                           style={{
                             height: reelItemHeight,
                             marginBottom: reelItemGap,
                           }}
                         >
-                          <Text className="mb-2 text-center text-xs font-medium text-zinc-500">
+                          <Text className="mb-2 text-center text-xs font-medium text-muted">
                             {formatTaskSelectionContext(task, new Date())}
                           </Text>
                           <Text
                             numberOfLines={3}
                             className={`text-center text-xl font-bold leading-7 tracking-tight ${
                               interactionState !== "result" || isWinningCard
-                                ? "text-zinc-950"
-                                : "text-zinc-600"
+                                ? "text-foreground"
+                                : "text-secondary"
                             }`}
                           >
                             {task.title}
@@ -542,7 +544,7 @@ export default function TaskRouletteScreen() {
 
                   <View
                     pointerEvents="none"
-                    className="absolute left-3 right-3 rounded-2xl border border-zinc-400"
+                    className="absolute left-3 right-3 rounded-2xl border border-line-focus"
                     style={{
                       height: reelItemHeight,
                       top: (reelViewportHeight - reelItemHeight) / 2,
@@ -559,12 +561,12 @@ export default function TaskRouletteScreen() {
                   accessibilityLabel={`Start focus on ${selectedTask.title}`}
                   accessibilityState={{ disabled: resultActionsDisabled }}
                   disabled={resultActionsDisabled}
-                  className={`min-h-12 justify-center rounded-xl bg-zinc-950 px-5 active:bg-zinc-800 ${
+                  className={`min-h-12 justify-center rounded-xl bg-primary px-5 active:bg-primary-pressed ${
                     resultActionsDisabled ? "opacity-40" : ""
                   }`}
                   onPress={startFocus}
                 >
-                  <Text className="text-center text-base font-semibold text-white">
+                  <Text className="text-center text-base font-semibold text-primary-foreground">
                     Start focus
                   </Text>
                 </Pressable>
@@ -588,12 +590,12 @@ export default function TaskRouletteScreen() {
                     accessibilityLabel={`Open ${selectedTask.title}`}
                     accessibilityState={{ disabled: resultActionsDisabled }}
                     disabled={resultActionsDisabled}
-                    className={`min-h-12 flex-1 justify-center rounded-xl border border-zinc-300 bg-white px-4 active:bg-zinc-50 ${
+                    className={`min-h-12 flex-1 justify-center rounded-xl border border-line-strong bg-surface px-4 active:bg-pressed ${
                       resultActionsDisabled ? "opacity-40" : ""
                     }`}
                     onPress={openSelectedTask}
                   >
-                    <Text className="text-center text-base font-semibold text-zinc-900">
+                    <Text className="text-center text-base font-semibold text-foreground">
                       Open task
                     </Text>
                   </Pressable>
@@ -606,14 +608,14 @@ export default function TaskRouletteScreen() {
                   disabled={resultActionsDisabled}
                   className={`min-h-12 justify-center rounded-xl px-4 ${
                     hasResult
-                      ? "flex-1 border border-zinc-300 bg-white active:bg-zinc-50"
-                      : "bg-zinc-950 px-5 active:bg-zinc-800"
+                      ? "flex-1 border border-line-strong bg-surface active:bg-pressed"
+                      : "bg-primary px-5 active:bg-primary-pressed"
                   } ${resultActionsDisabled ? "opacity-40" : ""}`}
                   onPress={spin}
                 >
                   <Text
                     className={`text-center text-base font-semibold ${
-                      hasResult ? "text-zinc-900" : "text-white"
+                      hasResult ? "text-foreground" : "text-primary-foreground"
                     }`}
                   >
                     {isSpinning

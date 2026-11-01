@@ -17,7 +17,7 @@ export function FocusTimer({ session }: { session: FocusSession }) {
       accessibilityRole="timer"
       accessibilityLabel={`Focus time, ${describeFocusDuration(durationMs)}`}
       className={`text-xl font-medium tracking-tight ${
-        isActive ? "text-zinc-500" : "text-zinc-400"
+        isActive ? "text-muted" : "text-faint"
       }`}
       style={{ fontVariant: ["tabular-nums"] }}
     >

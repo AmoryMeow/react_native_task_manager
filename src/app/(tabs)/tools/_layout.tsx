@@ -1,16 +1,18 @@
 import { Stack } from "expo-router";
+import { useThemeColors } from "@/shared/theme/use-theme-colors";
 
 export const unstable_settings = {
   anchor: "index",
 };
 
 export default function ToolsLayout() {
+  const colors = useThemeColors();
   return (
     <Stack
       screenOptions={{
-        contentStyle: { backgroundColor: "#f4f4f5" },
+        contentStyle: { backgroundColor: colors.canvas },
         headerShadowVisible: false,
-        headerTintColor: "#18181b",
+        headerTintColor: colors.foreground,
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />

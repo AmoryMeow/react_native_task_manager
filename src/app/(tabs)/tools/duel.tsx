@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useThemeColors } from "@/shared/theme/use-theme-colors";
 
 import type { Task } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
@@ -36,16 +37,16 @@ function DuelTaskCard({ task, onPress, compact }: DuelTaskCardProps) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Choose ${task.title}`}
-      className={`${compact ? "" : "flex-1"} justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-5 active:bg-zinc-50`}
+      className={`${compact ? "" : "flex-1"} justify-center rounded-2xl border border-line bg-surface px-5 py-5 active:bg-pressed`}
       style={{ minHeight: compact ? 148 : 236 }}
       onPress={onPress}
     >
-      <Text className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-zinc-400">
+      <Text className="mb-3 text-center text-xs font-semibold uppercase tracking-wider text-faint">
         {formatTaskSelectionContext(task, new Date())}
       </Text>
       <Text
         numberOfLines={compact ? 3 : 5}
-        className="text-center text-xl font-bold leading-7 tracking-tight text-zinc-950"
+        className="text-center text-xl font-bold leading-7 tracking-tight text-foreground"
       >
         {task.title}
       </Text>
@@ -54,6 +55,7 @@ function DuelTaskCard({ task, onPress, compact }: DuelTaskCardProps) {
 }
 
 export default function TaskDuelScreen() {
+  const colors = useThemeColors();
   const db = useSQLiteContext();
   const { width } = useWindowDimensions();
   const useVerticalCards = width < 390;
@@ -239,7 +241,7 @@ export default function TaskDuelScreen() {
   };
 
   return (
-    <SafeAreaView edges={["left", "right"]} className="flex-1 bg-zinc-100">
+    <SafeAreaView edges={["left", "right"]} className="flex-1 bg-canvas">
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerClassName="flex-grow px-4 pb-6 pt-4"
@@ -252,49 +254,49 @@ export default function TaskDuelScreen() {
 
         {isLoading ? (
           <View className="flex-1 items-center justify-center gap-3 py-12">
-            <ActivityIndicator color="#18181b" />
-            <Text className="text-sm text-zinc-500">Preparing a pair…</Text>
+            <ActivityIndicator color={colors.foreground} />
+            <Text className="text-sm text-muted">Preparing a pair…</Text>
           </View>
         ) : loadError ? (
           <View className="flex-1 items-center justify-center gap-4 px-6 py-12">
-            <Text className="text-center text-base font-medium text-zinc-900">
+            <Text className="text-center text-base font-medium text-foreground">
               {loadError}
             </Text>
-            <Text className="text-center text-sm leading-5 text-zinc-500">
+            <Text className="text-center text-sm leading-5 text-muted">
               Your tasks are still safely stored on this device.
             </Text>
             <Pressable
               accessibilityRole="button"
-              className="min-h-12 justify-center rounded-xl border border-zinc-300 bg-white px-5 active:bg-zinc-50"
+              className="min-h-12 justify-center rounded-xl border border-line-strong bg-surface px-5 active:bg-pressed"
               onPress={() => void loadTasks()}
             >
-              <Text className="text-center text-sm font-semibold text-zinc-900">
+              <Text className="text-center text-sm font-semibold text-foreground">
                 Retry
               </Text>
             </Pressable>
           </View>
         ) : eligibleTasks.length === 0 ? (
           <View className="flex-1 items-center justify-center gap-3 px-6 py-12">
-            <Text className="text-center text-xl font-semibold text-zinc-900">
+            <Text className="text-center text-xl font-semibold text-foreground">
               No tasks to compare.
             </Text>
-            <Text className="text-center text-sm leading-5 text-zinc-500">
+            <Text className="text-center text-sm leading-5 text-muted">
               Choose other groups or add an unfinished task.
             </Text>
           </View>
         ) : onlyTask ? (
           <View className="flex-1 gap-6">
             <View className="flex-1 justify-center gap-4">
-              <Text className="text-center text-sm leading-5 text-zinc-500">
+              <Text className="text-center text-sm leading-5 text-muted">
                 Only one task available. No need to choose this time.
               </Text>
-              <View className="min-h-56 justify-center rounded-3xl border border-zinc-200 bg-white px-6 py-8">
-                <Text className="mb-3 text-center text-sm font-medium text-zinc-500">
+              <View className="min-h-56 justify-center rounded-3xl border border-line bg-surface px-6 py-8">
+                <Text className="mb-3 text-center text-sm font-medium text-muted">
                   {formatTaskSelectionContext(onlyTask, new Date())}
                 </Text>
                 <Text
                   numberOfLines={5}
-                  className="text-center text-3xl font-bold leading-10 tracking-tight text-zinc-950"
+                  className="text-center text-3xl font-bold leading-10 tracking-tight text-foreground"
                 >
                   {onlyTask.title}
                 </Text>
@@ -306,12 +308,12 @@ export default function TaskDuelScreen() {
                 accessibilityLabel={`Start focus on ${onlyTask.title}`}
                 accessibilityState={{ disabled: isFocusNavigationPending }}
                 disabled={isFocusNavigationPending}
-                className={`min-h-12 justify-center rounded-xl bg-zinc-950 px-5 active:bg-zinc-800 ${
+                className={`min-h-12 justify-center rounded-xl bg-primary px-5 active:bg-primary-pressed ${
                   isFocusNavigationPending ? "opacity-40" : ""
                 }`}
                 onPress={() => startFocus(onlyTask)}
               >
-                <Text className="text-center text-base font-semibold text-white">
+                <Text className="text-center text-base font-semibold text-primary-foreground">
                   Start focus
                 </Text>
               </Pressable>
@@ -320,12 +322,12 @@ export default function TaskDuelScreen() {
                 accessibilityLabel={`Open ${onlyTask.title}`}
                 accessibilityState={{ disabled: isFocusNavigationPending }}
                 disabled={isFocusNavigationPending}
-                className={`min-h-12 justify-center rounded-xl border border-zinc-300 bg-white px-5 active:bg-zinc-50 ${
+                className={`min-h-12 justify-center rounded-xl border border-line-strong bg-surface px-5 active:bg-pressed ${
                   isFocusNavigationPending ? "opacity-40" : ""
                 }`}
                 onPress={() => openTask(onlyTask)}
               >
-                <Text className="text-center text-base font-semibold text-zinc-900">
+                <Text className="text-center text-base font-semibold text-foreground">
                   Open task
                 </Text>
               </Pressable>
@@ -334,16 +336,16 @@ export default function TaskDuelScreen() {
         ) : selectedTask ? (
           <View className="flex-1 gap-6">
             <View className="flex-1 justify-center gap-4">
-              <Text className="text-center text-xs font-semibold uppercase tracking-widest text-zinc-400">
+              <Text className="text-center text-xs font-semibold uppercase tracking-widest text-faint">
                 Your choice
               </Text>
-              <View className="min-h-64 justify-center rounded-3xl border border-zinc-300 bg-white px-6 py-8">
-                <Text className="mb-3 text-center text-sm font-medium text-zinc-500">
+              <View className="min-h-64 justify-center rounded-3xl border border-line-strong bg-surface px-6 py-8">
+                <Text className="mb-3 text-center text-sm font-medium text-muted">
                   {formatTaskSelectionContext(selectedTask, new Date())}
                 </Text>
                 <Text
                   numberOfLines={5}
-                  className="text-center text-3xl font-bold leading-10 tracking-tight text-zinc-950"
+                  className="text-center text-3xl font-bold leading-10 tracking-tight text-foreground"
                 >
                   {selectedTask.title}
                 </Text>
@@ -355,12 +357,12 @@ export default function TaskDuelScreen() {
                 accessibilityLabel={`Start focus on ${selectedTask.title}`}
                 accessibilityState={{ disabled: isFocusNavigationPending }}
                 disabled={isFocusNavigationPending}
-                className={`min-h-12 justify-center rounded-xl bg-zinc-950 px-5 active:bg-zinc-800 ${
+                className={`min-h-12 justify-center rounded-xl bg-primary px-5 active:bg-primary-pressed ${
                   isFocusNavigationPending ? "opacity-40" : ""
                 }`}
                 onPress={() => startFocus(selectedTask)}
               >
-                <Text className="text-center text-base font-semibold text-white">
+                <Text className="text-center text-base font-semibold text-primary-foreground">
                   Start focus
                 </Text>
               </Pressable>
@@ -372,14 +374,14 @@ export default function TaskDuelScreen() {
                   accessibilityLabel={`Open ${selectedTask.title}`}
                   accessibilityState={{ disabled: isFocusNavigationPending }}
                   disabled={isFocusNavigationPending}
-                  className={`min-h-12 justify-center rounded-xl border border-zinc-300 bg-white px-4 active:bg-zinc-50 ${
+                  className={`min-h-12 justify-center rounded-xl border border-line-strong bg-surface px-4 active:bg-pressed ${
                     hasAlternativePairs ? "flex-1" : ""
                   } ${
                     isFocusNavigationPending ? "opacity-40" : ""
                   }`}
                   onPress={() => openTask(selectedTask)}
                 >
-                  <Text className="text-center text-base font-semibold text-zinc-900">
+                  <Text className="text-center text-base font-semibold text-foreground">
                     Open task
                   </Text>
                 </Pressable>
@@ -390,12 +392,12 @@ export default function TaskDuelScreen() {
                       disabled: isFocusNavigationPending,
                     }}
                     disabled={isFocusNavigationPending}
-                    className={`min-h-12 flex-1 justify-center rounded-xl border border-zinc-300 bg-white px-4 active:bg-zinc-50 ${
+                    className={`min-h-12 flex-1 justify-center rounded-xl border border-line-strong bg-surface px-4 active:bg-pressed ${
                       isFocusNavigationPending ? "opacity-40" : ""
                     }`}
                     onPress={drawNewPair}
                   >
-                    <Text className="text-center text-base font-semibold text-zinc-900">
+                    <Text className="text-center text-base font-semibold text-foreground">
                       New pair
                     </Text>
                   </Pressable>
@@ -406,7 +408,7 @@ export default function TaskDuelScreen() {
         ) : pair ? (
           <View className="flex-1 gap-6">
             <View className="flex-1 justify-center gap-4">
-              <Text className="text-center text-xl font-semibold tracking-tight text-zinc-950">
+              <Text className="text-center text-xl font-semibold tracking-tight text-foreground">
                 Which one would you rather do?
               </Text>
               <View
@@ -427,10 +429,10 @@ export default function TaskDuelScreen() {
             {hasAlternativePairs && (
               <Pressable
                 accessibilityRole="button"
-                className="min-h-12 justify-center rounded-xl border border-zinc-300 bg-white px-5 active:bg-zinc-50"
+                className="min-h-12 justify-center rounded-xl border border-line-strong bg-surface px-5 active:bg-pressed"
                 onPress={drawNewPair}
               >
-                <Text className="text-center text-base font-semibold text-zinc-900">
+                <Text className="text-center text-base font-semibold text-foreground">
                   New pair
                 </Text>
               </Pressable>

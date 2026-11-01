@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Platform, Pressable, Text, TextInput, View } from "react-native";
+import { useThemeColors } from "@/shared/theme/use-theme-colors";
 
 import { formatTaskSchedule } from "@/entities/task/lib/format-task-schedule";
 import { createDebouncedAction } from "@/shared/lib/debounced-action";
@@ -35,6 +36,7 @@ export function TaskCard({
   onDelete,
   onOpenDetails,
 }: TaskCardProps) {
+  const colors = useThemeColors();
   const isDone = task.status === "done";
   const [draftTitle, setDraftTitle] = useState(task.title);
   const [titleSave] = useState(() => createSingleFlight<boolean>());
@@ -124,7 +126,7 @@ export function TaskCard({
 
   return (
     <View
-      className={`mb-2 h-14 flex-row items-center overflow-hidden rounded-xl border border-zinc-200 bg-white ${
+      className={`mb-2 h-14 flex-row items-center overflow-hidden rounded-xl border border-line bg-surface ${
         isUpdating ? "opacity-50" : ""
       }`}
     >
@@ -135,17 +137,17 @@ export function TaskCard({
         aria-checked={isDone}
         accessibilityState={{ disabled: isUpdating }}
         disabled={isUpdating}
-        className="h-full w-11 items-center justify-center active:bg-zinc-50"
+        className="h-full w-11 items-center justify-center active:bg-pressed"
         onPress={() => void toggleTask()}
       >
         <View
           className={
             isDone
-              ? "h-5 w-5 items-center justify-center rounded-md bg-zinc-950"
-              : "h-5 w-5 rounded-md border-2 border-zinc-400"
+              ? "h-5 w-5 items-center justify-center rounded-md bg-primary"
+              : "h-5 w-5 rounded-md border-2 border-line-focus"
           }
         >
-          {isDone && <Text className="text-xs font-bold text-white">✓</Text>}
+          {isDone && <Text className="text-xs font-bold text-primary-foreground">✓</Text>}
         </View>
       </Pressable>
 
@@ -155,10 +157,10 @@ export function TaskCard({
           accessibilityLabel={isEditing ? "Task title" : `Edit ${task.title}`}
           className={`h-6 p-0 text-sm leading-5 ${
             isEditing
-              ? "font-medium text-zinc-950"
+              ? "font-medium text-foreground"
               : isDone
-                ? "text-zinc-400 line-through"
-                : "font-medium text-zinc-900"
+                ? "text-faint line-through"
+                : "font-medium text-foreground"
           }`}
           editable={isEditing && !isUpdating}
           onBlur={() => {
@@ -182,7 +184,7 @@ export function TaskCard({
           }}
           onSubmitEditing={() => void saveTitle()}
           returnKeyType="done"
-          selectionColor="#18181b"
+          selectionColor={colors.foreground}
           submitBehavior="blurAndSubmit"
           style={showSchedule ? undefined : { transform: [{ translateY: -1 }] }}
           textAlignVertical="center"
@@ -192,7 +194,7 @@ export function TaskCard({
         {showSchedule && (
           <Text
             numberOfLines={1}
-            className="mt-0.5 text-xs leading-4 text-zinc-500"
+            className="mt-0.5 text-xs leading-4 text-muted"
           >
             {formatTaskSchedule(task.schedule)}
           </Text>
@@ -211,7 +213,7 @@ export function TaskCard({
         hitSlop={8}
         className="h-11 w-11 items-center justify-center"
       >
-        <Text className="text-xl text-zinc-500">⋯</Text>
+        <Text className="text-xl text-muted">⋯</Text>
       </Pressable>
 
       {isEditing && (
@@ -219,13 +221,13 @@ export function TaskCard({
           accessibilityRole="button"
           accessibilityLabel="Cancel editing task title"
           disabled={isUpdating}
-          className="h-full justify-center px-1.5 active:bg-zinc-100"
+          className="h-full justify-center px-1.5 active:bg-pressed"
           onPressIn={() => {
             cancelRequestedRef.current = true;
           }}
           onPress={cancelEditing}
         >
-          <Text className="text-xs font-medium leading-5 text-zinc-500">
+          <Text className="text-xs font-medium leading-5 text-muted">
             Cancel
           </Text>
         </Pressable>
@@ -239,9 +241,9 @@ export function TaskCard({
           if (isEditing) cancelRequestedRef.current = true;
         }}
         onPress={deleteTask}
-        className="h-full w-11 items-center justify-center border-l border-zinc-100 active:bg-zinc-100"
+        className="h-full w-11 items-center justify-center border-l border-line active:bg-pressed"
       >
-        <Text className="text-lg text-zinc-400">×</Text>
+        <Text className="text-lg text-faint">×</Text>
       </Pressable>
 
       {dragHandle}

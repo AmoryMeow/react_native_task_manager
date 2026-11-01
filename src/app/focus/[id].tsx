@@ -382,9 +382,9 @@ export default function FocusScreen() {
   const failureBanner = failure ? (
     <View
       accessibilityLiveRegion="polite"
-      className="mb-1 flex-row items-center justify-between gap-3 rounded-xl bg-red-50 px-3 py-2"
+      className="mb-1 flex-row items-center justify-between gap-3 rounded-xl bg-danger-surface px-3 py-2"
     >
-      <Text className="flex-1 text-sm text-red-700">{failure.message}</Text>
+      <Text className="flex-1 text-sm text-danger">{failure.message}</Text>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Retry"
@@ -392,7 +392,7 @@ export default function FocusScreen() {
         onPress={failure.retry}
         className="min-h-10 justify-center px-2"
       >
-        <Text className="text-sm font-semibold text-red-700">Retry</Text>
+        <Text className="text-sm font-semibold text-danger">Retry</Text>
       </Pressable>
     </View>
   ) : null;
@@ -405,7 +405,7 @@ export default function FocusScreen() {
 
       <SafeAreaView
         edges={["bottom", "left", "right"]}
-        className="flex-1 bg-zinc-50"
+        className="flex-1 bg-subtle"
       >
         <View className="flex-1 px-6 py-5">
           {loadState === "loading" ? (
@@ -414,19 +414,19 @@ export default function FocusScreen() {
             </View>
           ) : loadState === "error" ? (
             <View className="mx-auto flex-1 w-full max-w-xl items-center justify-center gap-4">
-              <Text className="text-center text-lg font-semibold text-zinc-900">
+              <Text className="text-center text-lg font-semibold text-foreground">
                 Couldn&apos;t load this task
               </Text>
-              <Text className="text-center text-sm leading-5 text-zinc-500">
+              <Text className="text-center text-sm leading-5 text-muted">
                 Check the connection to local storage and try again.
               </Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Retry loading task"
                 onPress={() => void loadTask()}
-                className="min-h-11 justify-center rounded-xl bg-zinc-950 px-5 active:bg-zinc-700"
+                className="min-h-11 justify-center rounded-xl bg-primary px-5 active:bg-primary-pressed"
               >
-                <Text className="font-semibold text-white">Try again</Text>
+                <Text className="font-semibold text-primary-foreground">Try again</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -434,24 +434,24 @@ export default function FocusScreen() {
                 onPress={returnFromFocus}
                 className="min-h-11 justify-center px-5"
               >
-                <Text className="font-medium text-zinc-600">{returnLabel}</Text>
+                <Text className="font-medium text-secondary">{returnLabel}</Text>
               </Pressable>
             </View>
           ) : !task ? (
             <View className="mx-auto flex-1 w-full max-w-xl items-center justify-center gap-4">
-              <Text className="text-center text-lg font-semibold text-zinc-900">
+              <Text className="text-center text-lg font-semibold text-foreground">
                 Task not found
               </Text>
-              <Text className="text-center text-sm leading-5 text-zinc-500">
+              <Text className="text-center text-sm leading-5 text-muted">
                 It may have been deleted.
               </Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={returnLabel}
                 onPress={returnFromFocus}
-                className="min-h-11 justify-center rounded-xl border border-zinc-300 bg-white px-5 active:bg-zinc-100"
+                className="min-h-11 justify-center rounded-xl border border-line-strong bg-surface px-5 active:bg-pressed"
               >
-                <Text className="font-semibold text-zinc-800">
+                <Text className="font-semibold text-foreground">
                   {returnLabel}
                 </Text>
               </Pressable>
@@ -460,11 +460,11 @@ export default function FocusScreen() {
             <View className="mx-auto flex-1 w-full max-w-xl justify-center gap-4">
               <Text
                 accessibilityRole="header"
-                className="text-center text-2xl font-bold tracking-tight text-zinc-950"
+                className="text-center text-2xl font-bold tracking-tight text-foreground"
               >
                 Another focus session is open
               </Text>
-              <Text className="text-center text-base leading-6 text-zinc-600">
+              <Text className="text-center text-base leading-6 text-secondary">
                 {otherTask
                   ? `“${otherTask.title}” is still ${
                       otherSession.status === "paused" ? "paused" : "in focus"
@@ -482,11 +482,11 @@ export default function FocusScreen() {
                   accessibilityState={{ disabled: isSessionBusy }}
                   disabled={isSessionBusy}
                   onPress={replaceOtherSession}
-                  className={`min-h-14 items-center justify-center rounded-2xl bg-zinc-950 px-5 active:bg-zinc-700 ${
+                  className={`min-h-14 items-center justify-center rounded-2xl bg-primary px-5 active:bg-primary-pressed ${
                     isSessionBusy ? "opacity-40" : ""
                   }`}
                 >
-                  <Text className="text-base font-semibold text-white">
+                  <Text className="text-base font-semibold text-primary-foreground">
                     {sessionSnapshot.pending === "replace"
                       ? "Ending..."
                       : "End it and focus here"}
@@ -499,9 +499,9 @@ export default function FocusScreen() {
                     accessibilityLabel="Return to that session"
                     disabled={isSessionBusy}
                     onPress={returnToOtherSession}
-                    className="min-h-12 items-center justify-center rounded-xl border border-zinc-300 bg-white px-5 active:bg-zinc-100"
+                    className="min-h-12 items-center justify-center rounded-xl border border-line-strong bg-surface px-5 active:bg-pressed"
                   >
-                    <Text className="text-base font-semibold text-zinc-800">
+                    <Text className="text-base font-semibold text-foreground">
                       Return to that session
                     </Text>
                   </Pressable>
@@ -512,9 +512,9 @@ export default function FocusScreen() {
                   accessibilityLabel={returnLabel}
                   disabled={isSessionBusy}
                   onPress={returnFromFocus}
-                  className="min-h-12 items-center justify-center rounded-xl px-5 active:bg-zinc-100"
+                  className="min-h-12 items-center justify-center rounded-xl px-5 active:bg-pressed"
                 >
-                  <Text className="text-base font-medium text-zinc-600">
+                  <Text className="text-base font-medium text-secondary">
                     {returnLabel}
                   </Text>
                 </Pressable>
@@ -529,28 +529,28 @@ export default function FocusScreen() {
                 <View className="items-center gap-5">
                   <FocusOrb active={!isCompleted && !isPaused} />
 
-                  <Text className="text-center text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                  <Text className="text-center text-xs font-semibold uppercase tracking-widest text-faint">
                     {isCompleted ? "Completed" : isPaused ? "Paused" : "Focus"}
                   </Text>
                   <Text
                     accessibilityRole="header"
                     className={`text-center text-4xl font-bold leading-tight tracking-tight ${
                       isCompleted
-                        ? "text-zinc-400 line-through"
-                        : "text-zinc-950"
+                        ? "text-faint line-through"
+                        : "text-foreground"
                     }`}
                   >
                     {task.title}
                   </Text>
                   {task.description ? (
-                    <Text className="text-center text-lg leading-7 text-zinc-600">
+                    <Text className="text-center text-lg leading-7 text-secondary">
                       {task.description}
                     </Text>
                   ) : null}
                   {isCompleted ? (
                     <Text
                       accessibilityLiveRegion="polite"
-                      className="text-center text-sm leading-5 text-zinc-500"
+                      className="text-center text-sm leading-5 text-muted"
                     >
                       This task was completed while Focus Mode was open.
                     </Text>
@@ -570,11 +570,11 @@ export default function FocusScreen() {
                           }}
                           disabled={isSessionBusy || isFinishing}
                           onPress={togglePause}
-                          className={`min-h-10 justify-center rounded-full border border-zinc-300 bg-white px-5 active:bg-zinc-100 ${
+                          className={`min-h-10 justify-center rounded-full border border-line-strong bg-surface px-5 active:bg-pressed ${
                             isSessionBusy || isFinishing ? "opacity-40" : ""
                           }`}
                         >
-                          <Text className="text-sm font-semibold text-zinc-800">
+                          <Text className="text-sm font-semibold text-foreground">
                             {isPaused ? "Resume" : "Pause"}
                           </Text>
                         </Pressable>
@@ -588,7 +588,7 @@ export default function FocusScreen() {
                 <View className="gap-2 pb-2 pt-4">
                   <Text
                     accessibilityLiveRegion="polite"
-                    className="mb-2 text-center text-base font-medium leading-6 text-zinc-800"
+                    className="mb-2 text-center text-base font-medium leading-6 text-foreground"
                   >
                     Would you like to continue this task tomorrow?
                   </Text>
@@ -601,11 +601,11 @@ export default function FocusScreen() {
                     accessibilityState={{ disabled: isFinishing }}
                     disabled={isFinishing}
                     onPress={() => chooseEndFocus("move-to-tomorrow")}
-                    className={`min-h-14 items-center justify-center rounded-2xl bg-zinc-950 px-5 active:bg-zinc-700 ${
+                    className={`min-h-14 items-center justify-center rounded-2xl bg-primary px-5 active:bg-primary-pressed ${
                       isFinishing ? "opacity-40" : ""
                     }`}
                   >
-                    <Text className="text-base font-semibold text-white">
+                    <Text className="text-base font-semibold text-primary-foreground">
                       {finishKind === "move" ? "Moving..." : "Move to tomorrow"}
                     </Text>
                   </Pressable>
@@ -616,11 +616,11 @@ export default function FocusScreen() {
                     accessibilityState={{ disabled: isFinishing }}
                     disabled={isFinishing}
                     onPress={() => chooseEndFocus("keep")}
-                    className={`min-h-12 items-center justify-center rounded-xl px-5 active:bg-zinc-100 ${
+                    className={`min-h-12 items-center justify-center rounded-xl px-5 active:bg-pressed ${
                       isFinishing ? "opacity-40" : ""
                     }`}
                   >
-                    <Text className="text-base font-medium text-zinc-600">
+                    <Text className="text-base font-medium text-secondary">
                       {keepLabel}
                     </Text>
                   </Pressable>
@@ -636,11 +636,11 @@ export default function FocusScreen() {
                       accessibilityState={{ disabled: isFinishing }}
                       disabled={isFinishing}
                       onPress={completeTask}
-                      className={`min-h-14 items-center justify-center rounded-2xl bg-zinc-950 px-5 active:bg-zinc-700 ${
+                      className={`min-h-14 items-center justify-center rounded-2xl bg-primary px-5 active:bg-primary-pressed ${
                         isFinishing ? "opacity-40" : ""
                       }`}
                     >
-                      <Text className="text-base font-semibold text-white">
+                      <Text className="text-base font-semibold text-primary-foreground">
                         {finishKind === "complete"
                           ? "Completing..."
                           : "Complete task"}
@@ -654,11 +654,11 @@ export default function FocusScreen() {
                     accessibilityState={{ disabled: isFinishing }}
                     disabled={isFinishing}
                     onPress={exitFocus}
-                    className={`min-h-12 items-center justify-center rounded-xl px-5 active:bg-zinc-100 ${
+                    className={`min-h-12 items-center justify-center rounded-xl px-5 active:bg-pressed ${
                       isFinishing ? "opacity-40" : ""
                     }`}
                   >
-                    <Text className="text-base font-medium text-zinc-600">
+                    <Text className="text-base font-medium text-secondary">
                       {finishKind === "exit" || finishKind === "keep"
                         ? "Saving..."
                         : "Exit focus"}

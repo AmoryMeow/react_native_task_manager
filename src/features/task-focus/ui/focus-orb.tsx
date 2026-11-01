@@ -16,6 +16,8 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Circle, Defs, RadialGradient, Stop } from "react-native-svg";
 
+import { useThemeColors } from "@/shared/theme/use-theme-colors";
+
 const HALF_BREATH_MS = 3000;
 const CORE_LAG_MS = 300;
 const RESTING = 0.5;
@@ -25,9 +27,6 @@ const RESTING = 0.5;
 const COMPACT_SCREEN_HEIGHT = 700;
 const COMPACT_FACTOR = 0.7;
 
-const SLATE_400 = "148, 163, 184";
-const SLATE_500 = "100, 116, 139";
-const SLATE_50 = "248, 250, 252";
 
 const easing = Easing.inOut(Easing.sin);
 
@@ -47,6 +46,7 @@ interface FocusOrbProps {
 }
 
 export function FocusOrb({ active }: FocusOrbProps) {
+  const colors = useThemeColors();
   const prefersReducedMotion = useReducedMotion();
   const [isScreenFocused, setIsScreenFocused] = useState(false);
   const [isAppActive, setIsAppActive] = useState(
@@ -121,7 +121,7 @@ export function FocusOrb({ active }: FocusOrbProps) {
         <SoftDisc
           id={`${idPrefix}-halo`}
           size={size(198)}
-          color={SLATE_400}
+          color={colors["orb-halo"]}
           stops={[
             [0, 0.2],
             [0.86, 0.16],
@@ -133,7 +133,7 @@ export function FocusOrb({ active }: FocusOrbProps) {
         <SoftDisc
           id={`${idPrefix}-middle`}
           size={size(132)}
-          color={SLATE_400}
+          color={colors["orb-halo"]}
           stops={[
             [0, 0.32],
             [0.93, 0.3],
@@ -145,7 +145,7 @@ export function FocusOrb({ active }: FocusOrbProps) {
         <SoftDisc
           id={`${idPrefix}-core`}
           size={size(68)}
-          color={SLATE_500}
+          color={colors["orb-core"]}
           stops={[
             [0, 0.52],
             [0.93, 0.5],
@@ -157,7 +157,7 @@ export function FocusOrb({ active }: FocusOrbProps) {
         <SoftDisc
           id={`${idPrefix}-dot`}
           size={Math.max(14, size(18))}
-          color={SLATE_50}
+          color={colors["orb-center"]}
           stops={[
             [0, 1],
             [0.7, 1],
@@ -172,7 +172,6 @@ export function FocusOrb({ active }: FocusOrbProps) {
 interface SoftDiscProps {
   id: string;
   size: number;
-  /** "r, g, b" */
   color: string;
   /** [offset 0..1 from center to edge, opacity] */
   stops: readonly (readonly [number, number])[];
@@ -187,7 +186,7 @@ function SoftDisc({ id, size, color, stops }: SoftDiscProps) {
             <Stop
               key={offset}
               offset={offset}
-              stopColor={`rgb(${color})`}
+              stopColor={color}
               stopOpacity={opacity}
             />
           ))}

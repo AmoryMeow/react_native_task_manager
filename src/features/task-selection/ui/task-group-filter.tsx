@@ -65,14 +65,14 @@ export function TaskGroupFilter({
         accessibilityRole="button"
         accessibilityLabel={`Choose task groups. ${formatGroupSelection(selectedGroups)}`}
         accessibilityHint="Opens task group filters"
-        className="mb-4 min-h-12 flex-row items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-2 active:bg-zinc-50"
+        className="mb-4 min-h-12 flex-row items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2 active:bg-pressed"
         onPress={() => setIsOpen(true)}
       >
-        <Text className="text-sm text-zinc-500">Choose from</Text>
+        <Text className="text-sm text-muted">Choose from</Text>
         <View className="min-w-0 flex-1 flex-row items-center justify-end gap-2">
           <Text
             numberOfLines={1}
-            className="shrink text-right text-sm font-semibold text-zinc-900"
+            className="shrink text-right text-sm font-semibold text-foreground"
           >
             {formatGroupSelection(selectedGroups)}
           </Text>
@@ -87,12 +87,12 @@ export function TaskGroupFilter({
         visible={isOpen}
         onRequestClose={() => setIsOpen(false)}
       >
-        <SafeAreaView className="flex-1 bg-zinc-100">
-          <View className="border-b border-zinc-200 px-5 pb-4 pt-2">
-            <Text className="text-xl font-bold tracking-tight text-zinc-950">
+        <SafeAreaView className="flex-1 bg-canvas">
+          <View className="border-b border-line px-5 pb-4 pt-2">
+            <Text className="text-xl font-bold tracking-tight text-foreground">
               Choose groups
             </Text>
-            <Text className="mt-1 text-sm leading-5 text-zinc-500">
+            <Text className="mt-1 text-sm leading-5 text-muted">
               {description}
             </Text>
           </View>
@@ -100,19 +100,19 @@ export function TaskGroupFilter({
           <View className="flex-row gap-2 px-4 py-3">
             <Pressable
               accessibilityRole="button"
-              className="min-h-11 flex-1 justify-center rounded-xl border border-zinc-300 bg-white px-3 active:bg-zinc-50"
+              className="min-h-11 flex-1 justify-center rounded-xl border border-line-strong bg-surface px-3 active:bg-pressed"
               onPress={() => onChange(allTaskGroups)}
             >
-              <Text className="text-center text-sm font-semibold text-zinc-900">
+              <Text className="text-center text-sm font-semibold text-foreground">
                 Select all
               </Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              className="min-h-11 flex-1 justify-center rounded-xl border border-zinc-300 bg-white px-3 active:bg-zinc-50"
+              className="min-h-11 flex-1 justify-center rounded-xl border border-line-strong bg-surface px-3 active:bg-pressed"
               onPress={() => onChange(DEFAULT_TASK_SELECTION_GROUPS)}
             >
-              <Text className="text-center text-sm font-semibold text-zinc-900">
+              <Text className="text-center text-sm font-semibold text-foreground">
                 Reset
               </Text>
             </Pressable>
@@ -123,7 +123,7 @@ export function TaskGroupFilter({
             contentContainerClassName="px-4 pb-4"
             showsVerticalScrollIndicator={false}
           >
-            <View className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+            <View className="overflow-hidden rounded-2xl border border-line bg-surface">
               {taskGroupOptions.map((group, index) => {
                 const isSelected = selectedGroups.includes(group.id);
 
@@ -133,25 +133,25 @@ export function TaskGroupFilter({
                     accessibilityRole="checkbox"
                     accessibilityLabel={`Include ${group.label} tasks`}
                     accessibilityState={{ checked: isSelected }}
-                    className={`min-h-14 flex-row items-center justify-between gap-4 px-4 py-2 active:bg-zinc-50 ${
+                    className={`min-h-14 flex-row items-center justify-between gap-4 px-4 py-2 active:bg-pressed ${
                       index < taskGroupOptions.length - 1
-                        ? "border-b border-zinc-200"
+                        ? "border-b border-line"
                         : ""
                     }`}
                     onPress={() => toggleGroup(group.id)}
                   >
-                    <Text className="flex-1 text-base font-medium text-zinc-900">
+                    <Text className="flex-1 text-base font-medium text-foreground">
                       {group.label}
                     </Text>
                     <View
                       className={
                         isSelected
-                          ? "h-6 w-6 items-center justify-center rounded-md bg-zinc-950"
-                          : "h-6 w-6 rounded-md border-2 border-zinc-400"
+                          ? "h-6 w-6 items-center justify-center rounded-md bg-primary"
+                          : "h-6 w-6 rounded-md border-2 border-line-focus"
                       }
                     >
                       {isSelected && (
-                        <Text className="text-sm font-bold text-white">✓</Text>
+                        <Text className="text-sm font-bold text-primary-foreground">✓</Text>
                       )}
                     </View>
                   </Pressable>
@@ -160,13 +160,13 @@ export function TaskGroupFilter({
             </View>
           </ScrollView>
 
-          <View className="border-t border-zinc-200 bg-zinc-100 px-4 pb-2 pt-3">
+          <View className="border-t border-line bg-canvas px-4 pb-2 pt-3">
             <Pressable
               accessibilityRole="button"
-              className="min-h-12 justify-center rounded-xl bg-zinc-950 px-5 active:bg-zinc-800"
+              className="min-h-12 justify-center rounded-xl bg-primary px-5 active:bg-primary-pressed"
               onPress={() => setIsOpen(false)}
             >
-              <Text className="text-center text-base font-semibold text-white">
+              <Text className="text-center text-base font-semibold text-primary-foreground">
                 Done
               </Text>
             </Pressable>

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useThemeColors } from "@/shared/theme/use-theme-colors";
 
 import { useSQLiteContext } from "expo-sqlite";
 
@@ -85,6 +86,7 @@ function toTaskSchedule(option: ScheduleOption): TaskSchedule {
 }
 
 export default function HomeScreen() {
+  const colors = useThemeColors();
   const db = useSQLiteContext();
   const {
     recovery: focusRecovery,
@@ -440,7 +442,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView
       edges={["top", "left", "right"]}
-      className="flex-1 bg-zinc-100"
+      className="flex-1 bg-canvas"
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -448,11 +450,11 @@ export default function HomeScreen() {
       >
         <View className="flex-1 px-4 pt-4">
           <View className="mb-4 flex-row items-center justify-between">
-            <Text className="text-3xl font-bold tracking-tight text-zinc-950">
+            <Text className="text-3xl font-bold tracking-tight text-foreground">
               My Tasks
             </Text>
-            <View className="rounded-full bg-zinc-200 px-2.5 py-1">
-              <Text className="text-xs font-semibold text-zinc-600">
+            <View className="rounded-full bg-fill px-2.5 py-1">
+              <Text className="text-xs font-semibold text-secondary">
                 {remainingTasks} open
               </Text>
             </View>
@@ -472,12 +474,12 @@ export default function HomeScreen() {
           <View className="mb-3 flex-row gap-2">
             <TextInput
               accessibilityLabel="New task title"
-              className="h-11 flex-1 rounded-xl border border-zinc-300 bg-white px-3.5 text-base text-zinc-950"
+              className="h-11 flex-1 rounded-xl border border-line-strong bg-surface px-3.5 text-base text-foreground"
               value={title}
               onChangeText={setTitle}
               placeholder="Add a small next step"
-              placeholderTextColor="#71717a"
-              selectionColor="#18181b"
+              placeholderTextColor={colors.muted}
+              selectionColor={colors.foreground}
               onSubmitEditing={() => void addTask()}
               returnKeyType="done"
               editable={!isInputDisabled}
@@ -486,11 +488,11 @@ export default function HomeScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add task"
-              className={`h-11 w-11 items-center justify-center rounded-xl bg-zinc-950 ${isAddDisabled ? "opacity-40" : "active:bg-zinc-700"}`}
+              className={`h-11 w-11 items-center justify-center rounded-xl bg-primary ${isAddDisabled ? "opacity-40" : "active:bg-primary-pressed"}`}
               onPress={() => void addTask()}
               disabled={isAddDisabled}
             >
-              <Text className="text-2xl font-light leading-7 text-white">
+              <Text className="text-2xl font-light leading-7 text-primary-foreground">
                 +
               </Text>
             </Pressable>
@@ -518,15 +520,15 @@ export default function HomeScreen() {
                   onPress={() => setScheduleOption(option.value)}
                   className={`${
                     isSelected
-                      ? "rounded-full bg-zinc-950 px-3 py-1.5"
-                      : "rounded-full border border-zinc-300 bg-white px-3 py-1.5 active:bg-zinc-50"
+                      ? "rounded-full bg-primary px-3 py-1.5"
+                      : "rounded-full border border-line-strong bg-surface px-3 py-1.5 active:bg-pressed"
                   } ${isInputDisabled ? "opacity-40" : ""}`}
                 >
                   <Text
                     className={
                       isSelected
-                        ? "text-xs font-semibold text-white"
-                        : "text-xs font-medium text-zinc-600"
+                        ? "text-xs font-semibold text-primary-foreground"
+                        : "text-xs font-medium text-secondary"
                     }
                   >
                     {option.label}
@@ -537,19 +539,19 @@ export default function HomeScreen() {
           </ScrollView>
 
           {isLoading && (
-            <Text className="py-3 text-sm text-zinc-500">Loading tasks...</Text>
+            <Text className="py-3 text-sm text-muted">Loading tasks...</Text>
           )}
 
           {loadError && (
-            <View className="items-start rounded-xl border border-zinc-300 bg-white p-3">
-              <Text className="mb-2 text-sm text-zinc-700">{loadError}</Text>
+            <View className="items-start rounded-xl border border-line-strong bg-surface p-3">
+              <Text className="mb-2 text-sm text-secondary">{loadError}</Text>
 
               <Pressable
                 accessibilityRole="button"
                 onPress={() => void retryLoadingTasks()}
-                className="rounded-lg bg-zinc-900 px-3 py-2 active:bg-zinc-700"
+                className="rounded-lg bg-primary px-3 py-2 active:bg-primary-pressed"
               >
-                <Text className="text-xs font-semibold text-white">
+                <Text className="text-xs font-semibold text-primary-foreground">
                   Try again
                 </Text>
               </Pressable>
@@ -559,9 +561,9 @@ export default function HomeScreen() {
           {actionError && (
             <View
               accessibilityRole="alert"
-              className="mb-3 flex-row items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2"
+              className="mb-3 flex-row items-center justify-between rounded-xl border border-danger-line bg-danger-surface px-3 py-2"
             >
-              <Text className="flex-1 text-sm text-red-800">{actionError}</Text>
+              <Text className="flex-1 text-sm text-danger">{actionError}</Text>
 
               <Pressable
                 accessibilityRole="button"
@@ -569,7 +571,7 @@ export default function HomeScreen() {
                 onPress={() => setActionError(null)}
                 className="ml-2 p-1.5"
               >
-                <Text className="font-semibold text-red-800">×</Text>
+                <Text className="font-semibold text-danger">×</Text>
               </Pressable>
             </View>
           )}
@@ -655,10 +657,10 @@ export default function HomeScreen() {
                 ListFooterComponent={
                   tasks.length === 0 ? (
                     <View className="flex-1 items-center justify-center px-8 pb-24">
-                      <Text className="mb-2 text-lg font-semibold text-zinc-900">
+                      <Text className="mb-2 text-lg font-semibold text-foreground">
                         Clear space for focus
                       </Text>
-                      <Text className="text-center text-sm text-zinc-500">
+                      <Text className="text-center text-sm text-muted">
                         Add one small task to get started.
                       </Text>
                     </View>
@@ -687,8 +689,8 @@ export default function HomeScreen() {
           )}
 
           {lastDeletedTask && (
-            <View className="mb-2 flex-row items-center justify-between rounded-xl bg-zinc-900 px-3 py-2">
-              <Text className="text-sm font-medium text-white">
+            <View className="mb-2 flex-row items-center justify-between rounded-xl bg-primary px-3 py-2">
+              <Text className="text-sm font-medium text-primary-foreground">
                 Task deleted
               </Text>
 
@@ -696,9 +698,9 @@ export default function HomeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Undo delete"
                 onPress={() => void undoDelete()}
-                className="rounded-lg px-2.5 py-1.5 active:bg-zinc-700"
+                className="rounded-lg px-2.5 py-1.5 active:bg-primary-pressed"
               >
-                <Text className="font-semibold text-white">Undo</Text>
+                <Text className="font-semibold text-primary-foreground">Undo</Text>
               </Pressable>
             </View>
           )}

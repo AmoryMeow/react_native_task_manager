@@ -1,14 +1,15 @@
 import type { ChangeEvent, CSSProperties } from "react";
 
+import { useEffectiveColorScheme } from "@/shared/theme/use-theme-colors";
+
 import type { CalendarDatePickerProps } from "./calendar-date-picker.types";
 
 const inputStyle: CSSProperties = {
-  backgroundColor: "#ffffff",
-  border: "1px solid #d4d4d8",
+  backgroundColor: "rgb(var(--color-surface))",
+  border: "1px solid rgb(var(--color-line-strong))",
   borderRadius: 8,
   boxSizing: "border-box",
-  color: "#27272a",
-  colorScheme: "light",
+  color: "rgb(var(--color-foreground))",
   fontFamily: "inherit",
   fontSize: 16,
   height: 44,
@@ -54,6 +55,8 @@ export function CalendarDatePicker({
   onChange,
   value,
 }: CalendarDatePickerProps) {
+  const scheme = useEffectiveColorScheme();
+
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const date = parseInputDateValue(event.currentTarget.value);
 
@@ -65,7 +68,11 @@ export function CalendarDatePicker({
       aria-label={accessibilityLabel}
       disabled={disabled}
       onChange={handleChange}
-      style={{ ...inputStyle, cursor: disabled ? "default" : "pointer" }}
+      style={{
+        ...inputStyle,
+        colorScheme: scheme,
+        cursor: disabled ? "default" : "pointer",
+      }}
       type="date"
       value={toInputDateValue(value)}
     />

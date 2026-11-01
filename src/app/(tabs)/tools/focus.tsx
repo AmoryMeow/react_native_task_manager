@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useThemeColors } from "@/shared/theme/use-theme-colors";
 
 import type { Task } from "@/entities/task/model/types";
 import { createTaskRepository } from "@/entities/task/repository/task-repository";
@@ -18,6 +19,7 @@ import { getFocusTasks } from "@/features/task-focus/lib/get-focus-tasks";
 import { formatTaskSelectionContext } from "@/features/task-selection/lib/format-task-selection-context";
 
 export default function FocusTaskPickerScreen() {
+  const colors = useThemeColors();
   const db = useSQLiteContext();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [query, setQuery] = useState("");
@@ -79,9 +81,9 @@ export default function FocusTaskPickerScreen() {
   }
 
   return (
-    <SafeAreaView edges={["left", "right"]} className="flex-1 bg-zinc-100">
+    <SafeAreaView edges={["left", "right"]} className="flex-1 bg-canvas">
       <View className="flex-1 px-4 pb-4 pt-4">
-        <Text className="mb-4 text-sm leading-5 text-zinc-500">
+        <Text className="mb-4 text-sm leading-5 text-muted">
           Choose one task to work on without the surrounding list.
         </Text>
 
@@ -91,32 +93,32 @@ export default function FocusTaskPickerScreen() {
           onChangeText={setQuery}
           editable={!isNavigationPending}
           placeholder="Search tasks"
-          placeholderTextColor="#a1a1aa"
+          placeholderTextColor={colors.faint}
           returnKeyType="search"
-          selectionColor="#18181b"
-          className="mb-3 min-h-11 rounded-xl border border-zinc-300 bg-white px-3.5 text-base text-zinc-950"
+          selectionColor={colors.foreground}
+          className="mb-3 min-h-11 rounded-xl border border-line-strong bg-surface px-3.5 text-base text-foreground"
         />
 
         {isLoading ? (
           <View className="flex-1 items-center justify-center gap-3">
-            <ActivityIndicator color="#18181b" />
-            <Text className="text-sm text-zinc-500">Loading tasks…</Text>
+            <ActivityIndicator color={colors.foreground} />
+            <Text className="text-sm text-muted">Loading tasks…</Text>
           </View>
         ) : loadError ? (
           <View className="flex-1 items-center justify-center gap-4 px-6">
-            <Text className="text-center text-base font-medium text-zinc-900">
+            <Text className="text-center text-base font-medium text-foreground">
               {loadError}
             </Text>
-            <Text className="text-center text-sm leading-5 text-zinc-500">
+            <Text className="text-center text-sm leading-5 text-muted">
               Your tasks are still safely stored on this device.
             </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Retry loading focus tasks"
               onPress={() => void loadTasks()}
-              className="min-h-11 justify-center rounded-xl border border-zinc-300 bg-white px-5 active:bg-zinc-50"
+              className="min-h-11 justify-center rounded-xl border border-line-strong bg-surface px-5 active:bg-pressed"
             >
-              <Text className="text-center text-sm font-semibold text-zinc-900">
+              <Text className="text-center text-sm font-semibold text-foreground">
                 Retry
               </Text>
             </Pressable>
@@ -133,12 +135,12 @@ export default function FocusTaskPickerScreen() {
             }
             ListEmptyComponent={
               <View className="flex-1 items-center justify-center gap-2 px-8 pb-20">
-                <Text className="text-center text-lg font-semibold text-zinc-900">
+                <Text className="text-center text-lg font-semibold text-foreground">
                   {availableTasks.length === 0
                     ? "No tasks available"
                     : "No matching tasks"}
                 </Text>
-                <Text className="text-center text-sm leading-5 text-zinc-500">
+                <Text className="text-center text-sm leading-5 text-muted">
                   {availableTasks.length === 0
                     ? "Add an unfinished task, then return here to focus on it."
                     : "Try a different search."}
@@ -152,17 +154,17 @@ export default function FocusTaskPickerScreen() {
                 accessibilityState={{ disabled: isNavigationPending }}
                 disabled={isNavigationPending}
                 onPress={() => startFocus(item)}
-                className={`min-h-16 justify-center rounded-xl border border-zinc-200 bg-white px-4 py-3 active:bg-zinc-50 ${
+                className={`min-h-16 justify-center rounded-xl border border-line bg-surface px-4 py-3 active:bg-pressed ${
                   isNavigationPending ? "opacity-40" : ""
                 }`}
               >
                 <Text
                   numberOfLines={2}
-                  className="text-base font-semibold leading-5 text-zinc-950"
+                  className="text-base font-semibold leading-5 text-foreground"
                 >
                   {item.title}
                 </Text>
-                <Text className="mt-1 text-xs font-medium text-zinc-500">
+                <Text className="mt-1 text-xs font-medium text-muted">
                   {formatTaskSelectionContext(item, currentDate)}
                 </Text>
               </Pressable>

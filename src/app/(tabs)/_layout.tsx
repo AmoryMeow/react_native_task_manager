@@ -1,9 +1,11 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useThemeColors } from "@/shared/theme/use-theme-colors";
 
 import { TabBarIcon } from "@/shared/ui/icons/tab-bar-icon";
 
 export default function TabsLayout() {
+  const colors = useThemeColors();
   const insets = useSafeAreaInsets();
 
   return (
@@ -11,8 +13,8 @@ export default function TabsLayout() {
       initialRouteName="index"
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#18181b",
-        tabBarInactiveTintColor: "#a1a1aa",
+        tabBarActiveTintColor: colors.foreground,
+        tabBarInactiveTintColor: colors.faint,
         tabBarHideOnKeyboard: true,
         tabBarLabelStyle: {
           fontSize: 10,

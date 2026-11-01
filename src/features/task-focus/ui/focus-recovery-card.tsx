@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
+import { useThemeColors } from "@/shared/theme/use-theme-colors";
 
 import {
   formatSessionStart,
@@ -26,6 +27,7 @@ export function FocusRecoveryCard({
   onResume,
   onEnd,
 }: FocusRecoveryCardProps) {
+  const colors = useThemeColors();
   const { session, task } = recovery;
   const { now, durationMs } = useFocusDuration(session);
   const [isReviewing, setIsReviewing] = useState(false);
@@ -97,16 +99,16 @@ export function FocusRecoveryCard({
   return (
     <View
       accessibilityLabel="Unfinished focus session"
-      className="mb-4 gap-3 rounded-2xl border border-zinc-200 bg-white p-4"
+      className="mb-4 gap-3 rounded-2xl border border-line bg-surface p-4"
     >
       <View className="flex-row items-center justify-between gap-3">
         <View className="flex-row items-center gap-2">
           <View
             className={`h-2 w-2 rounded-full ${
-              isActive ? "bg-zinc-900" : "bg-zinc-300"
+              isActive ? "bg-primary" : "bg-line-strong"
             }`}
           />
-          <Text className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+          <Text className="text-xs font-semibold uppercase tracking-widest text-muted">
             {isActive ? "Active" : "Paused"}
           </Text>
         </View>
@@ -115,7 +117,7 @@ export function FocusRecoveryCard({
           accessibilityLabel={`Recovered focus time, ${describeFocusDuration(
             durationMs,
           )}`}
-          className="text-sm font-semibold text-zinc-600"
+          className="text-sm font-semibold text-secondary"
           style={{ fontVariant: ["tabular-nums"] }}
         >
           {formatFocusDuration(durationMs)}
@@ -125,18 +127,18 @@ export function FocusRecoveryCard({
       <View className="gap-0.5">
         <Text
           numberOfLines={2}
-          className="text-base font-semibold leading-6 text-zinc-950"
+          className="text-base font-semibold leading-6 text-foreground"
         >
           {title}
         </Text>
-        <Text className="text-xs text-zinc-500">
+        <Text className="text-xs text-muted">
           {formatSessionStart(session.startedAt, now)}
           {task ? "" : " · The task is no longer available"}
         </Text>
       </View>
 
       {isLong ? (
-        <Text className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+        <Text className="rounded-lg bg-warning-surface px-3 py-2 text-xs leading-5 text-warning">
           This session has been running for over 4 hours. Review the recorded
           time when you end it.
         </Text>
@@ -145,7 +147,7 @@ export function FocusRecoveryCard({
       {endError ? (
         <Text
           accessibilityLiveRegion="polite"
-          className="rounded-lg bg-red-50 px-3 py-2 text-xs leading-5 text-red-700"
+          className="rounded-lg bg-danger-surface px-3 py-2 text-xs leading-5 text-danger"
         >
           {endError}
         </Text>
@@ -153,7 +155,7 @@ export function FocusRecoveryCard({
 
       {isReviewing ? (
         <View className="gap-3">
-          <Text className="text-sm leading-5 text-zinc-600">
+          <Text className="text-sm leading-5 text-secondary">
             Recorded focus time is {formatFocusDuration(durationMs)}. Adjust it
             if you weren&apos;t focusing the whole time.
           </Text>
@@ -165,26 +167,26 @@ export function FocusRecoveryCard({
               onChangeText={setHoursInput}
               keyboardType="number-pad"
               editable={!isEnding}
-              selectionColor="#18181b"
-              className="h-10 w-16 rounded-lg border border-zinc-300 bg-white px-3 text-base text-zinc-950"
+              selectionColor={colors.foreground}
+              className="h-10 w-16 rounded-lg border border-line-strong bg-surface px-3 text-base text-foreground"
             />
-            <Text className="text-sm text-zinc-600">h</Text>
+            <Text className="text-sm text-secondary">h</Text>
             <TextInput
               accessibilityLabel="Focus minutes"
               value={minutesInput}
               onChangeText={setMinutesInput}
               keyboardType="number-pad"
               editable={!isEnding}
-              selectionColor="#18181b"
-              className="h-10 w-16 rounded-lg border border-zinc-300 bg-white px-3 text-base text-zinc-950"
+              selectionColor={colors.foreground}
+              className="h-10 w-16 rounded-lg border border-line-strong bg-surface px-3 text-base text-foreground"
             />
-            <Text className="text-sm text-zinc-600">min</Text>
+            <Text className="text-sm text-secondary">min</Text>
           </View>
 
           {inputError ? (
             <Text
               accessibilityLiveRegion="polite"
-              className="text-xs text-red-700"
+              className="text-xs text-danger"
             >
               {inputError}
             </Text>
@@ -197,11 +199,11 @@ export function FocusRecoveryCard({
               accessibilityState={{ disabled: isEnding }}
               disabled={isEnding}
               onPress={endWithAdjustedTime}
-              className={`min-h-10 justify-center rounded-xl bg-zinc-950 px-4 active:bg-zinc-700 ${
+              className={`min-h-10 justify-center rounded-xl bg-primary px-4 active:bg-primary-pressed ${
                 isEnding ? "opacity-40" : ""
               }`}
             >
-              <Text className="text-sm font-semibold text-white">
+              <Text className="text-sm font-semibold text-primary-foreground">
                 {isEnding ? "Ending..." : "End with adjusted time"}
               </Text>
             </Pressable>
@@ -211,9 +213,9 @@ export function FocusRecoveryCard({
               accessibilityState={{ disabled: isEnding }}
               disabled={isEnding}
               onPress={() => void end()}
-              className="min-h-10 justify-center rounded-xl border border-zinc-300 bg-white px-4 active:bg-zinc-100"
+              className="min-h-10 justify-center rounded-xl border border-line-strong bg-surface px-4 active:bg-pressed"
             >
-              <Text className="text-sm font-semibold text-zinc-800">
+              <Text className="text-sm font-semibold text-foreground">
                 Keep recorded time
               </Text>
             </Pressable>
@@ -224,7 +226,7 @@ export function FocusRecoveryCard({
               onPress={() => setIsReviewing(false)}
               className="min-h-10 justify-center px-2"
             >
-              <Text className="text-sm font-medium text-zinc-500">Cancel</Text>
+              <Text className="text-sm font-medium text-muted">Cancel</Text>
             </Pressable>
           </View>
         </View>
@@ -236,11 +238,11 @@ export function FocusRecoveryCard({
               accessibilityLabel={`Resume focus on ${task.title}`}
               disabled={isEnding}
               onPress={() => onResume(task.id)}
-              className={`min-h-10 justify-center rounded-xl bg-zinc-950 px-4 active:bg-zinc-700 ${
+              className={`min-h-10 justify-center rounded-xl bg-primary px-4 active:bg-primary-pressed ${
                 isEnding ? "opacity-40" : ""
               }`}
             >
-              <Text className="text-sm font-semibold text-white">
+              <Text className="text-sm font-semibold text-primary-foreground">
                 Resume focus
               </Text>
             </Pressable>
@@ -253,11 +255,11 @@ export function FocusRecoveryCard({
             accessibilityState={{ disabled: isEnding }}
             disabled={isEnding}
             onPress={startEnding}
-            className={`min-h-10 justify-center rounded-xl border border-zinc-300 bg-white px-4 active:bg-zinc-100 ${
+            className={`min-h-10 justify-center rounded-xl border border-line-strong bg-surface px-4 active:bg-pressed ${
               isEnding ? "opacity-40" : ""
             }`}
           >
-            <Text className="text-sm font-semibold text-zinc-800">
+            <Text className="text-sm font-semibold text-foreground">
               {isEnding
                 ? "Ending..."
                 : isLong

@@ -29,12 +29,12 @@ export function TaskSectionHeader({
       disabled={disabled}
       className="mb-2 mt-4 self-start flex-row items-center py-1"
     >
-      <Text className="text-base font-semibold text-zinc-900">{title}</Text>
+      <Text className="text-base font-semibold text-foreground">{title}</Text>
 
       <View className="ml-2 flex-row items-center gap-1">
-        <Text className="h-5 text-xs leading-5 text-zinc-500">{count}</Text>
+        <Text className="h-5 text-xs leading-5 text-muted">{count}</Text>
 
-        <View className="h-5 w-5 items-center justify-center rounded-full bg-zinc-200">
+        <View className="h-5 w-5 items-center justify-center rounded-full bg-fill">
           <ChevronIcon direction={isCollapsed ? "down" : "up"} />
         </View>
       </View>
